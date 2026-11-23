@@ -1,0 +1,80 @@
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
+from app.core.database import get_db
+from app.models import Chapter, Story
+from app.routers.stories import get_owned_story
+from app.schemas.chapter import ChapterBrief, ChapterCreate, ChapterOut, ChapterUpdate
+from app.services.chapter_service import (
+    create_chapter,
+    delete_chapter,
+    get_chapter,
+    list_chapters,
+    update_chapter,
+)
+from app.services.story_service import get_story
+
+router = APIRouter(prefix="/api/stories/{story_id}/chapters", tags=["chapters"])
+
+
+def get_owned_chapter(
+    chapter_id: int,
+    story: Story = Depends(get_owned_story),
+    db: Session = Depends(get_db),
+) -> Chapter:
+    """Lấy chương, đồng thời kiểm tra người gọi là tác giả của truyện."""
+    chapter = get_chapter(db, story.id, chapter_id)
+    if chapter is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Không tìm thấy chương")
+    return chapter
+
+
+@router.get("", response_model=list[ChapterBrief])
+def table_of_contents(story_id: int, db: Session = Depends(get_db)):
+    """Mục lục công khai: chỉ chương đã xuất bản của truyện đã xuất bản."""
+    story = get_story(db, story_id)
+    if story is None or not story.is_published:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Không tìm thấy truyện")
+    return list_chapters(db, story_id, only_published=True)
+
+
+@router.get("/manage", response_model=list[ChapterBrief])
+def manage_chapters(
+    story: Story = Depends(get_owned_story), db: Session = Depends(get_db)
+):
+    """Góc tác giả: tất cả chương, kể cả bản nháp."""
+    return list_chapters(db, story.id, only_published=False)
+
+
+@router.post("", response_model=ChapterOut, status_code=status.HTTP_201_CREATED)
+def create(
+    data: ChapterCreate,
+    story: Story = Depends(get_owned_story),
+    db: Session = Depends(get_db),
+):
+    try:
+        return create_chapter(db, story, data)
+    except ValueError as e:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(e))
+
+
+@router.get("/{chapter_id}/edit", response_model=ChapterOut)
+def read_for_edit(chapter: Chapter = Depends(get_owned_chapter)):
+    return chapter
+
+
+@router.patch("/{chapter_id}", response_model=ChapterOut)
+def update(
+    data: ChapterUpdate,
+    chapter: Chapter = Depends(get_owned_chapter),
+    db: Session = Depends(get_db),
+):
+    try:
+        return update_chapter(db, chapter, data)
+    except ValueError as e:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(e))
+
+
+@router.delete("/{chapter_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete(chapter: Chapter = Depends(get_owned_chapter), db: Session = Depends(get_db)):
+    delete_chapter(db, chapter)
