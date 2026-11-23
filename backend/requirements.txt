@@ -7,3 +7,5 @@ pydantic-settings
 pyjwt
 pwdlib[argon2]
 redis
+python-multipart
+email-validator

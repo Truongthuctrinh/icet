@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from redis import Redis
 from sqlalchemy import text
 from sqlalchemy.orm import Session
+from app.routers import auth
 
 from app.core.config import settings
 from app.core.database import get_db
@@ -16,6 +17,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(auth.router)
 
 redis_client = Redis.from_url(settings.REDIS_URL)
 
