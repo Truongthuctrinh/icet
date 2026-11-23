@@ -18,21 +18,53 @@ def verify_password(password: str, hashed: str) -> bool:
     return password_hasher.verify(password, hashed)
 
 
-def create_access_token(user_id: int) -> str:
+# ---------- JWT dùng chung ----------
+
+def _encode(payload: dict, minutes: int) -> str:
     now = datetime.now(timezone.utc)
-    payload = {
-        "sub": str(user_id),
-        "iat": now,
-        "exp": now + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
-    }
+    payload = {**payload, "iat": now, "exp": now + timedelta(minutes=minutes)}
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 
-def decode_access_token(token: str) -> int | None:
+def _decode(token: str, expected_type: str) -> dict | None:
+    """Giải mã và CHỈ chấp nhận đúng loại token (access / read)."""
     try:
         payload = jwt.decode(
             token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM]
         )
-        return int(payload["sub"])
-    except (jwt.InvalidTokenError, KeyError, ValueError):
+    except jwt.InvalidTokenError:
         return None
+    if payload.get("typ") != expected_type:
+        return None
+    return payload
+
+
+# ---------- Access token (đăng nhập) ----------
+
+def create_access_token(user_id: int) -> str:
+    return _encode(
+        {"typ": "access", "sub": str(user_id)}, settings.ACCESS_TOKEN_EXPIRE_MINUTES
+    )
+
+
+def decode_access_token(token: str) -> int | None:
+    payload = _decode(token, "access")
+    if payload is None:
+        return None
+    try:
+        return int(payload["sub"])
+    except (KeyError, ValueError):
+        return None
+
+
+# ---------- Read token (vé đọc chương) ----------
+
+def create_read_token(session_id: int, user_id: int, chapter_id: int) -> str:
+    return _encode(
+        {"typ": "read", "sub": str(user_id), "sid": session_id, "cid": chapter_id},
+        settings.READ_TOKEN_EXPIRE_MINUTES,
+    )
+
+
+def decode_read_token(token: str) -> dict | None:
+    return _decode(token, "read")
