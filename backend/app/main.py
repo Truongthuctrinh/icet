@@ -3,10 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from redis import Redis
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-from app.routers import auth
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.routers import auth, stories
 
 app = FastAPI(title="ICeT API")
 
@@ -18,6 +18,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(auth.router)
+app.include_router(stories.router)
 
 redis_client = Redis.from_url(settings.REDIS_URL)
 
