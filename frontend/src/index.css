@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Literata", Georgia, "Times New Roman", serif;
+
+  --color-ink: #1e2440;       /* mực chàm: chữ chính */
+  --color-ink-soft: #565b78;  /* chữ phụ */
+  --color-paper: #f7f8fc;     /* nền giấy ánh lam */
+  --color-mist: #e3e5ef;      /* viền, đường kẻ */
+  --color-dusk: #4b3f8f;      /* tím hoàng hôn: hành động chính */
+  --color-dusk-deep: #372d72;
+  --color-marigold: #f2b84b;  /* điểm nhấn duy nhất: ngôi sao, thanh tiến độ */
+  --color-sage: #2f7a5b;      /* đã xuất bản */
+  --color-rose: #b23a48;      /* lỗi, xoá */
+}
+
+@layer base {
+  html {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    font-family: var(--font-sans);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-dusk);
+    outline-offset: 2px;
+  }
+}
+
+/* ---- Lớp bảo vệ 1: chặn bôi đen / copy / in ở trình duyệt ---- */
+.protected-content {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.print-only {
+  display: none;
+}
+
+@media print {
+  .protected-content,
+  header,
+  footer {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+}
+
+/* Đoạn văn hiện dần khi vừa được tải về */
+.reader-paragraph {
+  animation: paragraph-in 480ms ease-out both;
+}
+
+@keyframes paragraph-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reader-paragraph {
+    animation: none;
+  }
+}
