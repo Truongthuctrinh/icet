@@ -47,7 +47,9 @@ export const authApi = {
 };
 
 export const storyApi = {
-  list: (skip = 0, limit = 12) => data(api.get("/stories", { params: { skip, limit } })),
+  /** filters: { q, genre, status, sort } */
+  list: (skip = 0, limit = 12, filters = {}) =>
+    data(api.get("/stories", { params: { skip, limit, ...filters } })),
   mine: () => data(api.get("/stories/mine")),
   get: (storyId) => data(api.get(`/stories/${storyId}`)),
   create: (payload) => data(api.post("/stories", payload)),
@@ -87,4 +89,46 @@ export const plagiarismApi = {
   reports: (status) => data(api.get("/plagiarism/reports", { params: status ? { status } : {} })),
   setStatus: (reportId, status) => data(api.patch(`/plagiarism/reports/${reportId}`, { status })),
   reindex: () => data(api.post("/plagiarism/reindex")),
+};
+
+export const genreApi = {
+  list: () => data(api.get("/genres")),
+};
+
+export const commentApi = {
+  list: (storyId, chapterId) => data(api.get(`/stories/${storyId}/chapters/${chapterId}/comments`)),
+  add: (storyId, chapterId, content, parentId = null) =>
+    data(
+      api.post(`/stories/${storyId}/chapters/${chapterId}/comments`, {
+        content,
+        parent_id: parentId,
+      })
+    ),
+  edit: (storyId, chapterId, commentId, content) =>
+    data(api.patch(`/stories/${storyId}/chapters/${chapterId}/comments/${commentId}`, { content })),
+  remove: (storyId, chapterId, commentId) =>
+    data(api.delete(`/stories/${storyId}/chapters/${chapterId}/comments/${commentId}`)),
+};
+
+export const ratingApi = {
+  summary: (storyId) => data(api.get(`/stories/${storyId}/ratings`)),
+  rate: (storyId, score, review) => data(api.put(`/stories/${storyId}/ratings/me`, { score, review })),
+  remove: (storyId) => api.delete(`/stories/${storyId}/ratings/me`),
+};
+
+export const followApi = {
+  follow: (storyId) => data(api.post(`/stories/${storyId}/follow`)),
+  unfollow: (storyId) => data(api.delete(`/stories/${storyId}/follow`)),
+  mine: () => data(api.get("/me/following")),
+};
+
+export const notificationApi = {
+  list: () => data(api.get("/notifications")),
+  unreadCount: () => data(api.get("/notifications/unread-count")).then((r) => r.count),
+  read: (id) => api.post(`/notifications/${id}/read`),
+  readAll: () => api.post("/notifications/read-all"),
+};
+
+export const userApi = {
+  profile: (username) => data(api.get(`/users/${encodeURIComponent(username)}`)),
 };

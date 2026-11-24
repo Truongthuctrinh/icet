@@ -2,9 +2,12 @@ import { BrowserRouter, Route, Routes } from "react-router";
 import Layout from "./components/Layout";
 import RequireAuth from "./components/RequireAuth";
 import { AuthProvider } from "./context/AuthContext";
+import FollowingPage from "./pages/FollowingPage";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import NotFoundPage from "./pages/NotFoundPage";
+import NotificationsPage from "./pages/NotificationsPage";
+import ProfilePage from "./pages/ProfilePage";
 import ReaderPage from "./pages/ReaderPage";
 import RegisterPage from "./pages/RegisterPage";
 import StoryPage from "./pages/StoryPage";
@@ -29,6 +32,9 @@ export default function App() {
             <Route path="dang-ky" element={<RegisterPage />} />
             <Route path="truyen/:storyId" element={<StoryPage />} />
             <Route path="truyen/:storyId/chuong/:chapterId" element={authed(<ReaderPage />)} />
+            <Route path="nguoi-dung/:username" element={<ProfilePage />} />
+            <Route path="tu-truyen" element={authed(<FollowingPage />)} />
+            <Route path="thong-bao" element={authed(<NotificationsPage />)} />
 
             {/* Góc tác giả */}
             <Route path="tac-gia" element={authed(<AuthorDashboard />)} />

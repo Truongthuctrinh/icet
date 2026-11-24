@@ -1,3 +1,13 @@
+"""Phát hiện đạo văn giữa các chương trên ICeT.
+
+Luồng xử lý khi 1 chương được lưu (chạy nền, không làm chậm thao tác lưu):
+  1. Lập chỉ mục LSH cho từng đoạn của chương.
+  2. Tìm các đoạn ở chương khác rơi vào cùng xô LSH -> ứng viên.
+  3. Tính Jaccard chính xác cho từng cặp ứng viên, giữ cặp >= PARAGRAPH_THRESHOLD.
+  4. Với mỗi đoạn, xác định ai viết TRƯỚC (lần xuất hiện sớm nhất trong các chương của từng tác giả).
+     Người viết sau là "suspect", bản sớm nhất là "source". Cùng tác giả thì không tính.
+     Tỉ lệ chữ bị trùng >= REPORT_THRESHOLD -> tạo/cập nhật cảnh báo; hết trùng -> tự gỡ cảnh báo.
+"""
 import logging
 from collections import defaultdict
 
@@ -8,6 +18,7 @@ from app.core.database import SessionLocal
 from app.core.minhash import MIN_SHINGLES, band_buckets, jaccard, shingles, signature
 from app.core.watermark import extract_session_ids, strip_marks
 from app.models import Chapter, ParagraphLSH, PlagiarismReport
+from app.services.notification_service import notify
 
 logger = logging.getLogger("icet.plagiarism")
 
@@ -89,6 +100,14 @@ def _upsert_report(db: Session, suspect: Chapter, source: Chapter, pairs: list[d
     if report is None:
         report = PlagiarismReport(suspect_chapter_id=suspect.id, source_chapter_id=source.id)
         db.add(report)
+        # Cảnh báo mới -> báo cho cả 2 tác giả
+        percent = round(score * 100)
+        notify(db, source.story.author_id, "plagiarism_source",
+               f"Truyện {source.story.title} của bạn có thể đã bị sao chép ({percent}% nội dung một chương)",
+               "/tac-gia/dao-van")
+        notify(db, suspect.story.author_id, "plagiarism_suspect",
+               f"Chương {suspect.number} của {suspect.story.title} trùng {percent}% với truyện của tác giả khác",
+               "/tac-gia/dao-van")
     report.score = score
     report.matched_count = len(matched_suspect)
     report.matches = sorted(pairs, key=lambda p: p["suspect_index"])
@@ -197,6 +216,7 @@ def reindex_all(db: Session) -> dict:
     for chapter_id in ids:
         report_ids.update(report.id for report in check_chapter(db, chapter_id))
     return {"chapters": len(ids), "reports": len(report_ids)}
+
 
 # ---------- Đọc cảnh báo cho API ----------
 

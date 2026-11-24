@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { storyApi } from "../../api/client";
+import { genreApi, storyApi } from "../../api/client";
 import { BackLink, Button, ErrorNote, Field, PageSpinner } from "../../components/ui";
 import { apiError, STATUS_LABELS } from "../../utils/format";
 
@@ -10,7 +10,22 @@ export default function StoryFormPage() {
   const isEdit = Boolean(storyId);
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({ title: "", description: "", status: "ongoing" });
+  const [form, setForm] = useState({ title: "", description: "", status: "ongoing", genre_ids: [] });
+  const [genres, setGenres] = useState([]);
+
+  useEffect(() => {
+    genreApi.list().then(setGenres).catch(() => {});
+  }, []);
+
+  const toggleGenre = (id) =>
+    setForm((f) => ({
+      ...f,
+      genre_ids: f.genre_ids.includes(id)
+        ? f.genre_ids.filter((g) => g !== id)
+        : f.genre_ids.length < 5
+          ? [...f.genre_ids, id]
+          : f.genre_ids,
+    }));
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -22,7 +37,12 @@ export default function StoryFormPage() {
       .then((stories) => {
         const story = stories.find((s) => String(s.id) === storyId);
         if (!story) throw new Error("not-owner");
-        setForm({ title: story.title, description: story.description, status: story.status });
+        setForm({
+          title: story.title,
+          description: story.description,
+          status: story.status,
+          genre_ids: story.genres.map((g) => g.id),
+        });
       })
       .catch((err) =>
         setError(err.message === "not-owner" ? "Không tìm thấy truyện này trong truyện của bạn." : apiError(err))
@@ -89,6 +109,28 @@ export default function StoryFormPage() {
           onChange={update("description")}
           maxLength={5000}
         />
+        <fieldset>
+          <legend className="mb-1.5 block text-sm font-medium text-ink">Thể loại</legend>
+          <div className="flex flex-wrap gap-2">
+            {genres.map((g) => {
+              const active = form.genre_ids.includes(g.id);
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => toggleGenre(g.id)}
+                  className={`rounded-full px-3 py-1.5 text-sm transition-colors ${
+                    active ? "bg-dusk text-white" : "border border-mist bg-white text-ink-soft hover:text-ink"
+                  }`}
+                >
+                  {g.name}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-1.5 text-[0.8125rem] text-ink-soft">Chọn tối đa 5 thể loại ({form.genre_ids.length}/5).</p>
+        </fieldset>
         <Field id="status" as="select" label="Tình trạng" value={form.status} onChange={update("status")}>
           {Object.entries(STATUS_LABELS).map(([value, label]) => (
             <option key={value} value={value}>

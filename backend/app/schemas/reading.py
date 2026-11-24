@@ -8,6 +8,7 @@ class ReadSessionOut(BaseModel):
     expires_in: int  # giây
     story_id: int
     story_title: str
+    story_author_id: int  # để giao diện biết ai được kiểm duyệt bình luận
     chapter: ChapterBrief  # không có nội dung
     total_paragraphs: int
     prev_chapter_id: int | None

@@ -4,9 +4,9 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.deps import get_current_user
+from app.core.rate_limit import limit_by_user
 from app.core.security import create_read_token, decode_read_token
 from app.core.watermark import embed
-from app.core.rate_limit import limit_by_user
 from app.models import User
 from app.schemas.chapter import ChapterBrief
 from app.schemas.reading import ParagraphBatchOut, ParagraphOut, ReadSessionOut
@@ -18,9 +18,7 @@ from app.services.reading_service import (
     start_reading_session,
 )
 
-router = APIRouter(
-    prefix="/api/stories/{story_id}/chapters/{chapter_id}", tags=["reading"]
-)
+router = APIRouter(prefix="/api/stories/{story_id}/chapters/{chapter_id}", tags=["reading"])
 
 
 @router.post(
@@ -50,6 +48,7 @@ def open_reading_session(
         expires_in=settings.READ_TOKEN_EXPIRE_MINUTES * 60,
         story_id=chapter.story_id,
         story_title=chapter.story.title,
+        story_author_id=chapter.story.author_id,
         chapter=ChapterBrief.model_validate(chapter),
         total_paragraphs=count_paragraphs(chapter.content),
         prev_chapter_id=prev_id,
@@ -74,9 +73,7 @@ def read_paragraphs(
     # 1. Vé đọc phải hợp lệ và còn hạn
     payload = decode_read_token(x_read_token)
     if payload is None:
-        raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED, "Vé đọc không hợp lệ hoặc đã hết hạn"
-        )
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Vé đọc không hợp lệ hoặc đã hết hạn")
 
     # 2. Vé phải cấp cho đúng chương này và đúng người đang đăng nhập
     if payload.get("cid") != chapter_id or payload.get("sub") != str(current_user.id):
@@ -90,7 +87,7 @@ def read_paragraphs(
     paragraphs = split_paragraphs(chapter.content)
     total = len(paragraphs)
     batch = paragraphs[start : start + limit]
-    
+
     return ParagraphBatchOut(
         chapter_id=chapter.id,
         start=start,

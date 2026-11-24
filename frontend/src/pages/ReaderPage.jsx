@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "react-router";
+import { useLocation, useParams } from "react-router";
 import { readingApi } from "../api/client";
+import CommentsSection from "../components/CommentsSection";
 import { BackLink, Button, ErrorNote, PageSpinner, Spinner } from "../components/ui";
 import { useAuth } from "../context/AuthContext";
 import { apiError } from "../utils/format";
@@ -17,6 +18,8 @@ function buildWatermark(username) {
 export default function ReaderPage() {
   const { storyId, chapterId } = useParams();
   const { user } = useAuth();
+  const location = useLocation();
+  const jumpToComments = location.hash === "#binh-luan"; // đến từ thông báo bình luận
 
   const [meta, setMeta] = useState(null); // thông tin chương từ POST /session
   const [paragraphs, setParagraphs] = useState([]);
@@ -136,8 +139,16 @@ export default function ReaderPage() {
   // Chương ngắn: đợt đầu chưa lấp đầy màn hình thì tải tiếp luôn
   useEffect(() => {
     if (phase !== "ready" || !hasMore || loadingMore || !sentinelRef.current) return;
-    if (sentinelRef.current.getBoundingClientRect().top < window.innerHeight + 500) loadMore();
-  }, [paragraphs.length, phase, hasMore, loadingMore, loadMore]);
+    if (jumpToComments || sentinelRef.current.getBoundingClientRect().top < window.innerHeight + 500)
+      loadMore();
+  }, [paragraphs.length, phase, hasMore, loadingMore, loadMore, jumpToComments]);
+
+  // Đến từ thông báo bình luận: tải hết chương rồi cuộn xuống phần bình luận
+  useEffect(() => {
+    if (jumpToComments && phase === "ready" && !hasMore) {
+      setTimeout(() => document.getElementById("binh-luan")?.scrollIntoView({ behavior: "smooth" }), 150);
+    }
+  }, [jumpToComments, phase, hasMore]);
 
   // Thanh tiến độ đọc
   useEffect(() => {
@@ -281,6 +292,10 @@ export default function ReaderPage() {
               )}
             </div>
           </nav>
+        )}
+
+        {!hasMore && !error && (
+          <CommentsSection storyId={storyId} chapterId={chapterId} storyAuthorId={meta.story_author_id} />
         )}
       </article>
 

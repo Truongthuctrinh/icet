@@ -2,12 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.core.security import create_access_token
-from app.core.config import settings
 from app.core.rate_limit import limit_by_ip
 from app.core.redis_client import redis_client
+from app.core.security import create_access_token
 from app.models import User
 from app.schemas.user import Token, UserCreate, UserOut
 from app.services.auth_service import authenticate_user, register_user

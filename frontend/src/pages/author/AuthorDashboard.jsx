@@ -91,6 +91,10 @@ export default function AuthorDashboard() {
                 <div className="mt-2 flex flex-wrap items-center gap-2.5 text-sm text-ink-soft">
                   <PublishBadge published={story.is_published} />
                   <StatusBadge status={story.status} />
+                  {story.rating_count > 0 && (
+                    <span>★ {story.rating_avg.toFixed(1)} ({story.rating_count} đánh giá)</span>
+                  )}
+                  <span>{story.follower_count} theo dõi</span>
                   <span>Sửa lần cuối {timeAgo(story.updated_at)}</span>
                 </div>
               </div>

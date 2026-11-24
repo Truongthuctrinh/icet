@@ -30,7 +30,14 @@ def _decode(token: str, expected_type: str) -> dict | None:
     """Giải mã và CHỈ chấp nhận đúng loại token (access / read)."""
     try:
         payload = jwt.decode(
-            token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM]
+            token,
+            settings.JWT_SECRET,
+            algorithms=[settings.JWT_ALGORITHM],
+            leeway=10,  # chấp nhận lệch đồng hồ tối đa 10 giây với hạn token (exp)
+            # Không kiểm tra "iat": đồng hồ máy (nhất là WSL2) đôi khi nhảy vọt lên trước vài chục giây
+            # lúc cấp token -> iat nằm ở "tương lai" -> token hợp lệ bị từ chối oan.
+            # Hạn dùng vẫn do exp quyết định nên không ảnh hưởng bảo mật.
+            options={"verify_iat": False},
         )
     except jwt.InvalidTokenError:
         return None
@@ -42,9 +49,7 @@ def _decode(token: str, expected_type: str) -> dict | None:
 # ---------- Access token (đăng nhập) ----------
 
 def create_access_token(user_id: int) -> str:
-    return _encode(
-        {"typ": "access", "sub": str(user_id)}, settings.ACCESS_TOKEN_EXPIRE_MINUTES
-    )
+    return _encode({"typ": "access", "sub": str(user_id)}, settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
 
 def decode_access_token(token: str) -> int | None:

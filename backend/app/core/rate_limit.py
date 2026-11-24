@@ -18,6 +18,7 @@ MESSAGES = {
     "open_chapter": "Bạn mở chương quá nhanh. Đợi {s} giây rồi thử lại.",
     "paragraphs": "Bạn tải nội dung quá nhanh. Đợi {s} giây rồi thử lại.",
     "login": "Đăng nhập sai quá nhiều lần. Đợi {s} giây rồi thử lại.",
+    "comment": "Bạn bình luận quá nhanh. Đợi {s} giây rồi thử lại.",
 }
 
 

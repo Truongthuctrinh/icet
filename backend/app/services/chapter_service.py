@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, defer
 
 from app.models import Chapter, Story
 from app.schemas.chapter import ChapterCreate, ChapterUpdate
+from app.services.notification_service import notify_new_chapter
 
 
 def normalize_content(text: str) -> str:
@@ -19,14 +20,23 @@ def count_words(text: str) -> int:
     return len(text.split())
 
 
+def _on_publish(db: Session, chapter: Chapter) -> None:
+    """Chương vừa ở trạng thái xuất bản: đẩy truyện lên "mới cập nhật";
+    nếu là lần xuất bản đầu tiên thì báo cho người theo dõi."""
+    chapter.story.updated_at = func.now()
+    if chapter.published_at is None:
+        chapter.published_at = func.now()
+        db.flush()
+        if chapter.story.is_published:
+            notify_new_chapter(db, chapter)
+
+
 def create_chapter(db: Session, story: Story, data: ChapterCreate) -> Chapter:
     content = normalize_content(data.content)
     if not content:
         raise ValueError("Nội dung chương không được để trống")
 
-    last_number = db.scalar(
-        select(func.max(Chapter.number)).where(Chapter.story_id == story.id)
-    )
+    last_number = db.scalar(select(func.max(Chapter.number)).where(Chapter.story_id == story.id))
     chapter = Chapter(
         story_id=story.id,
         number=(last_number or 0) + 1,
@@ -36,8 +46,9 @@ def create_chapter(db: Session, story: Story, data: ChapterCreate) -> Chapter:
         is_published=data.is_published,
     )
     db.add(chapter)
+    db.flush()
     if chapter.is_published:
-        story.updated_at = func.now()  # đẩy truyện lên "mới cập nhật"
+        _on_publish(db, chapter)
     db.commit()
     db.refresh(chapter)
     return chapter
@@ -47,7 +58,7 @@ def list_chapters(db: Session, story_id: int, only_published: bool) -> list[Chap
     stmt = (
         select(Chapter)
         .where(Chapter.story_id == story_id)
-        .options(defer(Chapter.content))  # mục lục không cần nội dung → không tải
+        .options(defer(Chapter.content))  # mục lục không cần nội dung -> không tải
         .order_by(Chapter.number)
     )
     if only_published:
@@ -56,9 +67,7 @@ def list_chapters(db: Session, story_id: int, only_published: bool) -> list[Chap
 
 
 def get_chapter(db: Session, story_id: int, chapter_id: int) -> Chapter | None:
-    stmt = select(Chapter).where(
-        Chapter.id == chapter_id, Chapter.story_id == story_id
-    )
+    stmt = select(Chapter).where(Chapter.id == chapter_id, Chapter.story_id == story_id)
     return db.scalar(stmt)
 
 
@@ -74,7 +83,7 @@ def update_chapter(db: Session, chapter: Chapter, data: ChapterUpdate) -> Chapte
     for field, value in values.items():
         setattr(chapter, field, value)
     if chapter.is_published:
-        chapter.story.updated_at = func.now()
+        _on_publish(db, chapter)
     db.commit()
     db.refresh(chapter)
     return chapter

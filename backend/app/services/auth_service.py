@@ -30,9 +30,7 @@ def register_user(db: Session, data: UserCreate) -> User:
 def authenticate_user(db: Session, identifier: str, password: str) -> User | None:
     """Đăng nhập bằng username hoặc email."""
     user = db.scalar(
-        select(User).where(
-            or_(User.username == identifier, User.email == identifier.lower())
-        )
+        select(User).where(or_(User.username == identifier, User.email == identifier.lower()))
     )
     if user is None:
         verify_password(password, DUMMY_HASH)  # chống dò user qua thời gian phản hồi

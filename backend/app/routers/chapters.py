@@ -57,7 +57,7 @@ def create(
     try:
         chapter = create_chapter(db, story, data)
     except ValueError as e:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(e))
+        raise HTTPException(422, str(e))
     # Kiểm tra đạo văn chạy SAU khi đã trả kết quả -> tác giả không phải chờ
     background_tasks.add_task(run_check_in_background, chapter.id)
     return chapter
@@ -78,7 +78,7 @@ def update(
     try:
         updated = update_chapter(db, chapter, data)
     except ValueError as e:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(e))
+        raise HTTPException(422, str(e))
     if data.content is not None:  # chỉ kiểm tra lại khi nội dung thay đổi
         background_tasks.add_task(run_check_in_background, updated.id)
     return updated
