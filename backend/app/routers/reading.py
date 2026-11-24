@@ -5,6 +5,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.core.security import create_read_token, decode_read_token
+from app.core.watermark import embed
 from app.models import User
 from app.schemas.chapter import ChapterBrief
 from app.schemas.reading import ParagraphBatchOut, ParagraphOut, ReadSessionOut
@@ -79,14 +80,14 @@ def read_paragraphs(
     paragraphs = split_paragraphs(chapter.content)
     total = len(paragraphs)
     batch = paragraphs[start : start + limit]
-    # TODO (phần sau): chèn watermark zero-width theo payload["sid"] vào từng đoạn
-
+    
     return ParagraphBatchOut(
         chapter_id=chapter.id,
         start=start,
         total_paragraphs=total,
         has_more=start + len(batch) < total,
         paragraphs=[
-            ParagraphOut(index=start + i, text=text) for i, text in enumerate(batch)
+            ParagraphOut(index=start + i, text=embed(text, payload["sid"]))
+            for i, text in enumerate(batch)
         ],
     )

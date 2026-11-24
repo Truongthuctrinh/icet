@@ -12,6 +12,7 @@ import AuthorDashboard from "./pages/author/AuthorDashboard";
 import ChapterEditorPage from "./pages/author/ChapterEditorPage";
 import ManageStoryPage from "./pages/author/ManageStoryPage";
 import StoryFormPage from "./pages/author/StoryFormPage";
+import TracePage from "./pages/author/TracePage";
 
 const authed = (page) => <RequireAuth>{page}</RequireAuth>;
 
@@ -30,6 +31,7 @@ export default function App() {
 
             {/* Góc tác giả */}
             <Route path="tac-gia" element={authed(<AuthorDashboard />)} />
+            <Route path="tac-gia/truy-vet" element={authed(<TracePage />)} />
             <Route path="tac-gia/truyen-moi" element={authed(<StoryFormPage />)} />
             <Route path="tac-gia/truyen/:storyId" element={authed(<ManageStoryPage />)} />
             <Route path="tac-gia/truyen/:storyId/sua" element={authed(<StoryFormPage />)} />

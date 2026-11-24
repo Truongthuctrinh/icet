@@ -49,7 +49,12 @@ export default function AuthorDashboard() {
             Chào {user.display_name}. Truyện của bạn, cả bản nháp lẫn đã xuất bản, đều ở đây.
           </p>
         </div>
-        <Button to="/tac-gia/truyen-moi">Viết truyện mới</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" to="/tac-gia/truy-vet">
+            Truy vết nội dung bị sao chép
+          </Button>
+          <Button to="/tac-gia/truyen-moi">Viết truyện mới</Button>
+        </div>
       </div>
 
       {error && (

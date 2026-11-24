@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.routers import auth, chapters, reading, stories
+from app.routers import auth, chapters, reading, stories, trace
 
 app = FastAPI(title="ICeT API")
 
@@ -21,6 +21,7 @@ app.include_router(auth.router)
 app.include_router(stories.router)
 app.include_router(chapters.router)
 app.include_router(reading.router)
+app.include_router(trace.router)
 
 redis_client = Redis.from_url(settings.REDIS_URL)
 

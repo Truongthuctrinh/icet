@@ -78,3 +78,7 @@ export const readingApi = {
       })
     ),
 };
+
+export const traceApi = {
+  trace: (text) => data(api.post("/trace", { text })),
+};
