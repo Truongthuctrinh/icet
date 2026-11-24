@@ -35,6 +35,9 @@ def authenticate_user(db: Session, identifier: str, password: str) -> User | Non
     if user is None:
         verify_password(password, DUMMY_HASH)  # chống dò user qua thời gian phản hồi
         return None
-    if not user.is_active or not verify_password(password, user.password_hash):
+    if not verify_password(password, user.password_hash):
         return None
+    if not user.is_active:
+        # Chỉ báo "bị khoá" khi mật khẩu đúng -> người lạ không dò được tài khoản nào bị khoá
+        raise PermissionError("Tài khoản này đã bị quản trị viên khoá.")
     return user

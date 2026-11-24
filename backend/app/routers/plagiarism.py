@@ -5,7 +5,7 @@ from app.core.database import get_db
 from app.core.deps import get_current_user, require_admin
 from app.models import PlagiarismReport, User
 from app.schemas.plagiarism import ReindexResult, ReportOut, ReportStatus, ReportStatusUpdate
-from app.services.plagiarism_service import list_reports, reindex_all, report_to_dict
+from app.services.plagiarism_service import apply_confirmation, list_reports, reindex_all, report_to_dict
 
 router = APIRouter(prefix="/api/plagiarism", tags=["plagiarism"])
 
@@ -29,7 +29,10 @@ def update_report_status(
     report = db.get(PlagiarismReport, report_id)
     if report is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Không tìm thấy cảnh báo")
+    was_confirmed = report.status == "confirmed"
     report.status = data.status
+    if data.status == "confirmed" and not was_confirmed:
+        apply_confirmation(db, report)
     db.commit()
     db.refresh(report)
     return report_to_dict(report, admin)

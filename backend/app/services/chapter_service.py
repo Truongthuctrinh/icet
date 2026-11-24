@@ -73,6 +73,14 @@ def get_chapter(db: Session, story_id: int, chapter_id: int) -> Chapter | None:
 
 def update_chapter(db: Session, chapter: Chapter, data: ChapterUpdate) -> Chapter:
     values = data.model_dump(exclude_unset=True, exclude_none=True)
+    if values.get("is_published"):
+        from app.services.plagiarism_service import locked_chapter_ids  # tránh import vòng
+
+        if locked_chapter_ids(db, [chapter.id]):
+            raise ValueError(
+                "Chương này đã bị ẩn vì được xác nhận sao chép nội dung. "
+                "Liên hệ quản trị viên nếu bạn cho rằng đây là nhầm lẫn."
+            )
     if "content" in values:
         content = normalize_content(values["content"])
         if not content:

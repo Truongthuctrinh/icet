@@ -26,6 +26,7 @@ class ChapterBrief(BaseModel):
     is_published: bool
     created_at: datetime
     updated_at: datetime
+    is_locked: bool = False  # bị khoá do xác nhận đạo văn (chỉ có ý nghĩa ở trang quản lý)
 
 
 class ChapterOut(ChapterBrief):

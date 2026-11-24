@@ -36,6 +36,11 @@ export default function Layout() {
                 <NavLink to="/tac-gia" className={navClass}>
                   Góc tác giả
                 </NavLink>
+                {user.role === "admin" && (
+                  <NavLink to="/quan-tri" className={navClass}>
+                    Quản trị
+                  </NavLink>
+                )}
                 <NotificationBell />
                 <Link to={`/nguoi-dung/${user.username}`} className="flex items-center gap-2 text-sm text-ink hover:text-dusk">
                   {user.display_name}
@@ -69,6 +74,17 @@ export default function Layout() {
         <div className="mx-auto max-w-5xl px-5 py-8 text-sm text-ink-soft">
           ICeT, Imagine Come True. Nơi người viết nghiệp dư chia sẻ truyện chữ.
         </div>
+        {/* Bẫy honeypot: người dùng (kể cả dùng trình đọc màn hình, bàn phím) không thấy và không
+            tới được link này; bot quét mọi thẻ <a> sẽ đi theo -> bị cấm IP tạm thời. */}
+        <a
+          href="/api/export/all-stories"
+          rel="nofollow"
+          tabIndex={-1}
+          aria-hidden="true"
+          className="pointer-events-none absolute -left-[9999px] h-px w-px overflow-hidden"
+        >
+          Tải toàn bộ truyện
+        </a>
       </footer>
     </div>
   );

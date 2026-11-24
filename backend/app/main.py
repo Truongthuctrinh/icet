@@ -1,15 +1,17 @@
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
+from fastapi.responses import PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal, get_db
 from app.core.redis_client import redis_client
+from app.core.shield import HONEYPOT_PATHS, shield_middleware
 from app.models import Genre
 from app.models.genre import DEFAULT_GENRES
-from app.routers import auth, chapters, community, plagiarism, reading, stories, trace
+from app.routers import admin, auth, chapters, community, plagiarism, reading, stories, trace
 
 
 def seed_genres() -> None:
@@ -31,6 +33,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="ICeT API", lifespan=lifespan)
 
+app.middleware("http")(shield_middleware)  # chặn bot AI, honeypot, IP bị cấm + header bảo mật
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],  # Vite dev server
@@ -46,6 +49,18 @@ app.include_router(reading.router)
 app.include_router(community.router)
 app.include_router(trace.router)
 app.include_router(plagiarism.router)
+app.include_router(admin.router)
+
+AI_CRAWLERS = ["GPTBot", "ChatGPT-User", "OAI-SearchBot", "CCBot", "ClaudeBot", "Claude-Web", "anthropic-ai",
+               "Google-Extended", "PerplexityBot", "Bytespider", "Amazonbot", "Applebot-Extended",
+               "meta-externalagent", "FacebookBot", "Diffbot", "cohere-ai"]
+
+
+@app.get("/robots.txt", response_class=PlainTextResponse, include_in_schema=False)
+def robots():
+    lines = [f"User-agent: {bot}\nDisallow: /\n" for bot in AI_CRAWLERS]
+    lines.append("User-agent: *\n" + "".join(f"Disallow: {p}\n" for p in sorted(HONEYPOT_PATHS)))
+    return "\n".join(lines)
 
 
 @app.get("/api/health")

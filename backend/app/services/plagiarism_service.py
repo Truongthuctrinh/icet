@@ -281,3 +281,30 @@ def list_reports(db: Session, viewer, status: str | None = None) -> list[dict]:
         if viewer.role == "admin" or viewer.id in involved:
             result.append(report_to_dict(report, viewer))
     return result
+
+
+def apply_confirmation(db: Session, report: PlagiarismReport) -> None:
+    """Admin xác nhận đạo văn: ẩn chương vi phạm (khoá xuất bản lại) + báo cho 2 tác giả."""
+    suspect = report.suspect_chapter
+    source = report.source_chapter
+    suspect.is_published = False
+    notify(db, suspect.story.author_id, "plagiarism_confirmed",
+           f"Chương {suspect.number} của {suspect.story.title} đã bị ẩn vì được xác nhận sao chép "
+           f"từ {source.story.title}. Liên hệ quản trị viên nếu đây là nhầm lẫn.", "/tac-gia/dao-van")
+    notify(db, source.story.author_id, "plagiarism_confirmed",
+           f"Quản trị viên đã xác nhận {suspect.story.title} sao chép truyện {source.story.title} của bạn. "
+           f"Chương vi phạm đã bị ẩn.", "/tac-gia/dao-van")
+
+
+def locked_chapter_ids(db: Session, chapter_ids: list[int]) -> set[int]:
+    """Các chương đang bị khoá vì có cảnh báo đạo văn đã xác nhận."""
+    if not chapter_ids:
+        return set()
+    return set(
+        db.scalars(
+            select(PlagiarismReport.suspect_chapter_id).where(
+                PlagiarismReport.status == "confirmed",
+                PlagiarismReport.suspect_chapter_id.in_(chapter_ids),
+            )
+        )
+    )

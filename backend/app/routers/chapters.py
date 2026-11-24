@@ -12,7 +12,7 @@ from app.services.chapter_service import (
     list_chapters,
     update_chapter,
 )
-from app.services.plagiarism_service import run_check_in_background
+from app.services.plagiarism_service import locked_chapter_ids, run_check_in_background
 from app.services.story_service import get_story
 
 router = APIRouter(prefix="/api/stories/{story_id}/chapters", tags=["chapters"])
@@ -43,8 +43,10 @@ def table_of_contents(story_id: int, db: Session = Depends(get_db)):
 def manage_chapters(
     story: Story = Depends(get_owned_story), db: Session = Depends(get_db)
 ):
-    """Góc tác giả: tất cả chương, kể cả bản nháp."""
-    return list_chapters(db, story.id, only_published=False)
+    """Góc tác giả: tất cả chương, kể cả bản nháp; đánh dấu chương bị khoá do đạo văn."""
+    chapters = list_chapters(db, story.id, only_published=False)
+    locked = locked_chapter_ids(db, [c.id for c in chapters])
+    return [ChapterBrief.model_validate(c).model_copy(update={"is_locked": c.id in locked}) for c in chapters]
 
 
 @router.post("", response_model=ChapterOut, status_code=status.HTTP_201_CREATED)

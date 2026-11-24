@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     RATE_LOGIN_PER_5MIN: int = 5
     RATE_COMMENT_PER_MIN: int = 5
 
+    # Chỉ tin header X-Forwarded-For khi request đi qua các proxy này (Vite dev server, nginx...)
+    TRUSTED_PROXIES: str = "127.0.0.1,::1"
+    HONEYPOT_BAN_MINUTES: int = 30
+
     @property
     def DATABASE_URL(self) -> str:
         return (

@@ -2,6 +2,7 @@ import { BrowserRouter, Route, Routes } from "react-router";
 import Layout from "./components/Layout";
 import RequireAuth from "./components/RequireAuth";
 import { AuthProvider } from "./context/AuthContext";
+import AdminPage from "./pages/AdminPage";
 import FollowingPage from "./pages/FollowingPage";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
@@ -48,6 +49,9 @@ export default function App() {
               path="tac-gia/truyen/:storyId/chuong/:chapterId/sua"
               element={authed(<ChapterEditorPage />)}
             />
+
+            {/* Quản trị (backend kiểm tra quyền admin ở mọi API) */}
+            <Route path="quan-tri" element={authed(<AdminPage />)} />
 
             <Route path="*" element={<NotFoundPage />} />
           </Route>

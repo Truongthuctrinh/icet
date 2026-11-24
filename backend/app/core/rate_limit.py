@@ -9,6 +9,7 @@ from fastapi import Depends, HTTPException, Request, status
 from redis.exceptions import RedisError
 
 from app.core.deps import get_current_user
+from app.core.net import get_client_ip
 from app.core.redis_client import redis_client
 from app.models import User
 
@@ -71,7 +72,6 @@ def limit_by_ip(scope: str, limit: int, window: int):
     """Dependency: giới hạn theo địa chỉ IP (dùng khi chưa đăng nhập, như form login)."""
 
     def dependency(request: Request) -> None:
-        ip = request.client.host if request.client else "unknown"
-        _enforce(scope, f"ip:{ip}", limit, window)
+        _enforce(scope, f"ip:{get_client_ip(request)}", limit, window)
 
     return dependency

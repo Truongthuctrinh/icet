@@ -5,6 +5,7 @@ os.environ.setdefault("POSTGRES_USER", "test")
 os.environ.setdefault("POSTGRES_PASSWORD", "test")
 os.environ.setdefault("POSTGRES_DB", "test")
 os.environ.setdefault("JWT_SECRET", "test-secret-key-for-pytest-only-0123456789")
+os.environ.setdefault("TRUSTED_PROXIES", "127.0.0.1,testclient")  # TestClient đóng vai proxy
 
 import fakeredis
 import pytest
@@ -13,6 +14,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 import app.core.rate_limit as rate_limit_module
+import app.core.shield as shield_module
+import app.services.admin_service as admin_service_module
 import app.main as main_module
 import app.routers.auth as auth_router_module
 import app.services.plagiarism_service as plagiarism_module
@@ -42,7 +45,7 @@ def client(tmp_path):
     # Thay DB + Redis thật bằng bản giả cho mọi chỗ đang dùng
     main_module.SessionLocal = TestSession
     plagiarism_module.SessionLocal = TestSession
-    for module in (rate_limit_module, auth_router_module, main_module):
+    for module in (rate_limit_module, auth_router_module, main_module, shield_module, admin_service_module):
         module.redis_client = fake
     main_module.app.dependency_overrides[get_db] = override_get_db
 
@@ -68,3 +71,15 @@ def register_and_login(client, username, display_name=None):
     ).json()["access_token"]
     client.fake_redis.flushall()  # không để bộ đếm đăng nhập ảnh hưởng test khác
     return {"Authorization": f"Bearer {token}"}
+
+
+def make_admin(client, username="quantri"):
+    headers = register_and_login(client, username)
+    import app.main as m
+    from app.models import User
+
+    db = m.SessionLocal()
+    db.query(User).filter_by(username=username).update({"role": "admin"})
+    db.commit()
+    db.close()
+    return headers

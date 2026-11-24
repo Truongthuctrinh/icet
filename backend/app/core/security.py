@@ -35,8 +35,7 @@ def _decode(token: str, expected_type: str) -> dict | None:
             algorithms=[settings.JWT_ALGORITHM],
             leeway=10,  # chấp nhận lệch đồng hồ tối đa 10 giây với hạn token (exp)
             # Không kiểm tra "iat": đồng hồ máy (nhất là WSL2) đôi khi nhảy vọt lên trước vài chục giây
-            # lúc cấp token -> iat nằm ở "tương lai" -> token hợp lệ bị từ chối oan.
-            # Hạn dùng vẫn do exp quyết định nên không ảnh hưởng bảo mật.
+            # lúc cấp token -> iat nằm ở "tương lai" -> token hợp lệ bị từ chối oan. Hạn dùng vẫn do exp quyết định.
             options={"verify_iat": False},
         )
     except jwt.InvalidTokenError:

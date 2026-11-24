@@ -161,7 +161,13 @@ export default function ManageStoryPage() {
                     {chapter.title}
                   </Link>
                   <div className="mt-1 flex flex-wrap items-center gap-2.5 text-[0.8125rem] text-ink-soft">
-                    <PublishBadge published={chapter.is_published} />
+                    {chapter.is_locked ? (
+                      <span className="rounded-full bg-rose/10 px-2.5 py-0.5 text-xs font-medium text-rose">
+                        Bị ẩn do đạo văn
+                      </span>
+                    ) : (
+                      <PublishBadge published={chapter.is_published} />
+                    )}
                     <span>{chapter.word_count.toLocaleString("vi-VN")} chữ</span>
                     <span>sửa {timeAgo(chapter.updated_at)}</span>
                   </div>
@@ -178,7 +184,8 @@ export default function ManageStoryPage() {
                     size="sm"
                     variant={chapter.is_published ? "ghost" : "primary"}
                     onClick={() => toggleChapter(chapter)}
-                    disabled={busyId === chapter.id}
+                    disabled={busyId === chapter.id || chapter.is_locked}
+                    title={chapter.is_locked ? "Chương bị khoá do được xác nhận đạo văn" : undefined}
                   >
                     {chapter.is_published ? "Chuyển về nháp" : "Xuất bản"}
                   </Button>

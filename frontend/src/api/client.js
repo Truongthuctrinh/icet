@@ -132,3 +132,12 @@ export const notificationApi = {
 export const userApi = {
   profile: (username) => data(api.get(`/users/${encodeURIComponent(username)}`)),
 };
+
+export const adminApi = {
+  overview: () => data(api.get("/admin/overview")),
+  users: (q) => data(api.get("/admin/users", { params: q ? { q } : {} })),
+  updateUser: (id, payload) => data(api.patch(`/admin/users/${id}`, payload)),
+  security: () => data(api.get("/admin/security")),
+  unban: (ip) => api.delete(`/admin/security/bans/${encodeURIComponent(ip)}`),
+  clearViolations: (subject) => api.delete(`/admin/security/violations/${encodeURIComponent(subject)}`),
+};

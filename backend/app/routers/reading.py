@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.deps import get_current_user
+from app.core.net import get_client_ip
 from app.core.rate_limit import limit_by_user
 from app.core.security import create_read_token, decode_read_token
 from app.core.watermark import embed
@@ -38,7 +39,7 @@ def open_reading_session(
     if chapter is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Không tìm thấy chương")
 
-    ip = request.client.host if request.client else None
+    ip = get_client_ip(request)
     user_agent = (request.headers.get("user-agent") or "")[:255]
     session = start_reading_session(db, current_user, chapter, ip, user_agent)
     prev_id, next_id = get_neighbor_ids(db, chapter)

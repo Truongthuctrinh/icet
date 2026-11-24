@@ -7,7 +7,7 @@ import { apiError, formatDateTime } from "../../utils/format";
 
 const STATUS = {
   pending: { label: "Chờ xem xét", className: "bg-marigold/15 text-ink" },
-  confirmed: { label: "Đã xác nhận đạo văn", className: "bg-rose/10 text-rose" },
+  confirmed: { label: "Đã xác nhận, chương bị ẩn", className: "bg-rose/10 text-rose" },
   dismissed: { label: "Đã bỏ qua", className: "bg-mist text-ink-soft" },
 };
 
@@ -101,7 +101,7 @@ function ReportCard({ report, isAdmin, onStatus, busy }) {
           <div className="flex flex-wrap gap-2">
             {report.status !== "confirmed" && (
               <Button size="sm" variant="danger" disabled={busy} onClick={() => onStatus(report, "confirmed")}>
-                Xác nhận đạo văn
+                Xác nhận và ẩn chương
               </Button>
             )}
             {report.status !== "dismissed" && (

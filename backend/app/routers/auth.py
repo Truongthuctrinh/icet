@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.deps import get_current_user
+from app.core.net import get_client_ip
 from app.core.rate_limit import limit_by_ip
 from app.core.redis_client import redis_client
 from app.core.security import create_access_token
@@ -33,7 +34,10 @@ def login(
     form: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
-    user = authenticate_user(db, form.username, form.password)
+    try:
+        user = authenticate_user(db, form.username, form.password)
+    except PermissionError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -41,8 +45,7 @@ def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
     # Đăng nhập đúng -> xoá bộ đếm, chỉ tính các lần SAI liên tiếp
-    ip = request.client.host if request.client else "unknown"
-    redis_client.delete(f"rl:login:ip:{ip}")
+    redis_client.delete(f"rl:login:ip:{get_client_ip(request)}")
     return Token(access_token=create_access_token(user.id))
 
 
