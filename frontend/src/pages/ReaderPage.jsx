@@ -26,12 +26,14 @@ export default function ReaderPage() {
   const [hasMore, setHasMore] = useState(true);
   const [scrollRatio, setScrollRatio] = useState(0);
   const [notice, setNotice] = useState("");
+  const [rateLimited, setRateLimited] = useState(false);
 
   // Dùng ref để các hàm bất đồng bộ luôn đọc được giá trị mới nhất
   const readTokenRef = useRef(null);
   const nextStartRef = useRef(0);
   const hasMoreRef = useRef(true);
   const loadingRef = useRef(false);
+  const rateLimitedRef = useRef(false); // bị 429 -> ngừng tự tải cho tới khi người đọc bấm "Tải tiếp"
   const sentinelRef = useRef(null);
   const noticeTimerRef = useRef(null);
 
@@ -43,7 +45,8 @@ export default function ReaderPage() {
   }, [storyId, chapterId]);
 
   const loadMore = useCallback(async () => {
-    if (loadingRef.current || !hasMoreRef.current || !readTokenRef.current) return;
+    if (loadingRef.current || rateLimitedRef.current || !hasMoreRef.current || !readTokenRef.current)
+      return;
     loadingRef.current = true;
     setLoadingMore(true);
 
@@ -66,8 +69,14 @@ export default function ReaderPage() {
       setHasMore(batch.has_more);
     } catch (err) {
       setError(apiError(err, "Không tải được nội dung chương."));
-      hasMoreRef.current = false;
-      setHasMore(false);
+      if (err.response?.status === 429) {
+        // Bị giới hạn tốc độ: giữ nguyên vị trí, chờ người đọc bấm tải tiếp
+        rateLimitedRef.current = true;
+        setRateLimited(true);
+      } else {
+        hasMoreRef.current = false;
+        setHasMore(false);
+      }
     } finally {
       loadingRef.current = false;
       setLoadingMore(false);
@@ -86,6 +95,8 @@ export default function ReaderPage() {
     nextStartRef.current = 0;
     hasMoreRef.current = true;
     loadingRef.current = false;
+    rateLimitedRef.current = false;
+    setRateLimited(false);
     window.scrollTo(0, 0);
 
     openSession()
@@ -163,6 +174,13 @@ export default function ReaderPage() {
 
   const watermark = useMemo(() => buildWatermark(user.username), [user.username]);
 
+  const retryAfterLimit = () => {
+    rateLimitedRef.current = false;
+    setRateLimited(false);
+    setError("");
+    loadMore();
+  };
+
   const blockEvent = (e) => {
     e.preventDefault();
     flashNotice();
@@ -231,7 +249,16 @@ export default function ReaderPage() {
           </p>
         )}
 
-        {error && <ErrorNote>{error}</ErrorNote>}
+        {error && (
+          <div className="space-y-3">
+            <ErrorNote>{error}</ErrorNote>
+            {rateLimited && (
+              <Button variant="secondary" onClick={retryAfterLimit}>
+                Tải tiếp
+              </Button>
+            )}
+          </div>
+        )}
 
         {!hasMore && !error && (
           <nav className="mt-12 border-t border-mist pt-8" aria-label="Điều hướng chương">

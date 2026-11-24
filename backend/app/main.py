@@ -1,11 +1,10 @@
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from redis import Redis
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.core.database import get_db
+from app.core.redis_client import redis_client
 from app.routers import auth, chapters, reading, stories, trace
 
 app = FastAPI(title="ICeT API")
@@ -22,8 +21,6 @@ app.include_router(stories.router)
 app.include_router(chapters.router)
 app.include_router(reading.router)
 app.include_router(trace.router)
-
-redis_client = Redis.from_url(settings.REDIS_URL)
 
 
 @app.get("/api/health")

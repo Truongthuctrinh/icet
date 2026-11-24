@@ -6,6 +6,7 @@ from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.core.security import create_read_token, decode_read_token
 from app.core.watermark import embed
+from app.core.rate_limit import limit_by_user
 from app.models import User
 from app.schemas.chapter import ChapterBrief
 from app.schemas.reading import ParagraphBatchOut, ParagraphOut, ReadSessionOut
@@ -22,7 +23,12 @@ router = APIRouter(
 )
 
 
-@router.post("/session", response_model=ReadSessionOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/session",
+    response_model=ReadSessionOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(limit_by_user("open_chapter", settings.RATE_OPEN_CHAPTER_PER_MIN, 60))],
+)
 def open_reading_session(
     story_id: int,
     chapter_id: int,
@@ -51,7 +57,11 @@ def open_reading_session(
     )
 
 
-@router.get("/paragraphs", response_model=ParagraphBatchOut)
+@router.get(
+    "/paragraphs",
+    response_model=ParagraphBatchOut,
+    dependencies=[Depends(limit_by_user("paragraphs", settings.RATE_PARAGRAPHS_PER_MIN, 60))],
+)
 def read_paragraphs(
     story_id: int,
     chapter_id: int,

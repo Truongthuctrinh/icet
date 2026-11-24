@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     READ_TOKEN_EXPIRE_MINUTES: int = 30
     MAX_PARAGRAPHS_PER_REQUEST: int = 10
+    RATE_OPEN_CHAPTER_PER_MIN: int = 10
+    RATE_PARAGRAPHS_PER_MIN: int = 60
+    RATE_LOGIN_PER_5MIN: int = 5
 
     @property
     def DATABASE_URL(self) -> str:
