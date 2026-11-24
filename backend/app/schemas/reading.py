@@ -12,3 +12,16 @@ class ReadSessionOut(BaseModel):
     total_paragraphs: int
     prev_chapter_id: int | None
     next_chapter_id: int | None
+
+
+class ParagraphOut(BaseModel):
+    index: int  # vị trí đoạn trong chương, bắt đầu từ 0
+    text: str
+
+
+class ParagraphBatchOut(BaseModel):
+    chapter_id: int
+    start: int
+    total_paragraphs: int
+    has_more: bool
+    paragraphs: list[ParagraphOut]

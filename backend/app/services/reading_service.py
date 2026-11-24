@@ -48,3 +48,8 @@ def start_reading_session(
     db.commit()
     db.refresh(session)
     return session
+
+
+def split_paragraphs(content: str) -> list[str]:
+    """Nội dung đã chuẩn hoá khi lưu: các đoạn cách nhau đúng 1 dòng trống."""
+    return content.split("\n\n") if content else []
