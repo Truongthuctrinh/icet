@@ -50,6 +50,9 @@ export default function AuthorDashboard() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" to="/tac-gia/dao-van">
+            Cảnh báo đạo văn
+          </Button>
           <Button variant="secondary" to="/tac-gia/truy-vet">
             Truy vết nội dung bị sao chép
           </Button>

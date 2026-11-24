@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -12,6 +12,7 @@ from app.services.chapter_service import (
     list_chapters,
     update_chapter,
 )
+from app.services.plagiarism_service import run_check_in_background
 from app.services.story_service import get_story
 
 router = APIRouter(prefix="/api/stories/{story_id}/chapters", tags=["chapters"])
@@ -49,13 +50,17 @@ def manage_chapters(
 @router.post("", response_model=ChapterOut, status_code=status.HTTP_201_CREATED)
 def create(
     data: ChapterCreate,
+    background_tasks: BackgroundTasks,
     story: Story = Depends(get_owned_story),
     db: Session = Depends(get_db),
 ):
     try:
-        return create_chapter(db, story, data)
+        chapter = create_chapter(db, story, data)
     except ValueError as e:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(e))
+    # Kiểm tra đạo văn chạy SAU khi đã trả kết quả -> tác giả không phải chờ
+    background_tasks.add_task(run_check_in_background, chapter.id)
+    return chapter
 
 
 @router.get("/{chapter_id}/edit", response_model=ChapterOut)
@@ -66,13 +71,17 @@ def read_for_edit(chapter: Chapter = Depends(get_owned_chapter)):
 @router.patch("/{chapter_id}", response_model=ChapterOut)
 def update(
     data: ChapterUpdate,
+    background_tasks: BackgroundTasks,
     chapter: Chapter = Depends(get_owned_chapter),
     db: Session = Depends(get_db),
 ):
     try:
-        return update_chapter(db, chapter, data)
+        updated = update_chapter(db, chapter, data)
     except ValueError as e:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(e))
+    if data.content is not None:  # chỉ kiểm tra lại khi nội dung thay đổi
+        background_tasks.add_task(run_check_in_background, updated.id)
+    return updated
 
 
 @router.delete("/{chapter_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.redis_client import redis_client
-from app.routers import auth, chapters, reading, stories, trace
+from app.routers import auth, chapters, plagiarism, reading, stories, trace
 
 app = FastAPI(title="ICeT API")
 
@@ -21,7 +21,7 @@ app.include_router(stories.router)
 app.include_router(chapters.router)
 app.include_router(reading.router)
 app.include_router(trace.router)
-
+app.include_router(plagiarism.router)
 
 @app.get("/api/health")
 def health(db: Session = Depends(get_db)):

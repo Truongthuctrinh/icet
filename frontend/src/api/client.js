@@ -82,3 +82,9 @@ export const readingApi = {
 export const traceApi = {
   trace: (text) => data(api.post("/trace", { text })),
 };
+
+export const plagiarismApi = {
+  reports: (status) => data(api.get("/plagiarism/reports", { params: status ? { status } : {} })),
+  setStatus: (reportId, status) => data(api.patch(`/plagiarism/reports/${reportId}`, { status })),
+  reindex: () => data(api.post("/plagiarism/reindex")),
+};

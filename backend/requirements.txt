@@ -8,4 +8,4 @@ pyjwt
 pwdlib[argon2]
 redis
 python-multipart
-email-validator
+email-validatornumpy
