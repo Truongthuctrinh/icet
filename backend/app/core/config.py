@@ -30,6 +30,16 @@ class Settings(BaseSettings):
     TRUSTED_PROXIES: str = "127.0.0.1,::1"
     HONEYPOT_BAN_MINUTES: int = 30
 
+    # Hàng đợi việc nền (arq trên Redis). Tắt -> kiểm tra đạo văn chạy ngay trong API (chỉ MinHash)
+    TASK_QUEUE_ENABLED: bool = True
+
+    # Phát hiện viết lại (paraphrase) bằng embedding — chạy trong worker
+    EMBEDDING_ENABLED: bool = True
+    EMBEDDING_MODEL: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    EMBEDDING_CACHE_DIR: str = ""  # để trống = thư mục cache mặc định của fastembed
+    SEMANTIC_THRESHOLD: float = 0.85  # cosine >= ngưỡng -> 2 đoạn coi là cùng ý (hiệu chỉnh bằng script)
+    SEMANTIC_MIN_WORDS: int = 12  # đoạn ngắn hơn không đưa vào so sánh ngữ nghĩa
+
     @property
     def DATABASE_URL(self) -> str:
         return (

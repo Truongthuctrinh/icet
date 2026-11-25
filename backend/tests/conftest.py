@@ -6,11 +6,12 @@ os.environ.setdefault("POSTGRES_PASSWORD", "test")
 os.environ.setdefault("POSTGRES_DB", "test")
 os.environ.setdefault("JWT_SECRET", "test-secret-key-for-pytest-only-0123456789")
 os.environ.setdefault("TRUSTED_PROXIES", "127.0.0.1,testclient")  # TestClient đóng vai proxy
+os.environ.setdefault("TASK_QUEUE_ENABLED", "false")  # test: không cần worker, kiểm tra chạy ngay
 
 import fakeredis
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 import app.core.rate_limit as rate_limit_module
@@ -27,10 +28,20 @@ def client(tmp_path):
     # Mỗi test 1 file SQLite tạm, mỗi phiên DB có kết nối RIÊNG (giống PostgreSQL thật).
     # Không dùng SQLite-trong-RAM + 1 kết nối chung: FastAPI chạy request ở nhiều luồng,
     # 2 luồng dùng chung 1 kết nối sẽ thỉnh thoảng đọc sai dữ liệu (lỗi chập chờn).
-    engine = create_engine(
-        f"sqlite:///{tmp_path / 'test.db'}",
-        connect_args={"check_same_thread": False, "timeout": 30},
-    )
+    # Muốn chạy test trên PostgreSQL + pgvector thật (kiểm tra truy vấn HNSW):
+    #   TEST_DATABASE_URL=postgresql+psycopg://user:pass@localhost:5432/icet_test pytest
+    # CẢNH BÁO: test xoá sạch mọi bảng trong DB đó -> dùng DB riêng cho test, đừng dùng DB chính.
+    pg_url = os.environ.get("TEST_DATABASE_URL")
+    if pg_url:
+        engine = create_engine(pg_url)
+        with engine.begin() as conn:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        Base.metadata.drop_all(engine)
+    else:
+        engine = create_engine(
+            f"sqlite:///{tmp_path / 'test.db'}",
+            connect_args={"check_same_thread": False, "timeout": 30},
+        )
     Base.metadata.create_all(engine)
     TestSession = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
     fake = fakeredis.FakeRedis(decode_responses=True)

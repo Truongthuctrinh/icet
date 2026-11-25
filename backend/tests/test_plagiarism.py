@@ -43,4 +43,4 @@ def test_copy_detected_and_notified(client):
 
     assert client.patch(f"/api/plagiarism/reports/{rep['id']}", json={"status": "confirmed"}, headers=a).status_code == 403
     assert client.patch(f"/api/plagiarism/reports/{rep['id']}", json={"status": "dismissed"}, headers=admin).json()["status"] == "dismissed"
-    assert client.post("/api/plagiarism/reindex", headers=admin).json() == {"chapters": 2, "reports": 1}
+    assert client.post("/api/plagiarism/reindex", headers=admin).json() == {"chapters": 2, "reports": 1, "queued": False}

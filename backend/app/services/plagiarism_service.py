@@ -7,6 +7,8 @@ Luồng xử lý khi 1 chương được lưu (chạy nền, không làm chậm 
   4. Với mỗi đoạn, xác định ai viết TRƯỚC (lần xuất hiện sớm nhất trong các chương của từng tác giả).
      Người viết sau là "suspect", bản sớm nhất là "source". Cùng tác giả thì không tính.
      Tỉ lệ chữ bị trùng >= REPORT_THRESHOLD -> tạo/cập nhật cảnh báo; hết trùng -> tự gỡ cảnh báo.
+  5. (Khi có model embedding — chạy trong worker) so sánh thêm theo NGHĨA: đoạn bị viết lại bằng
+     chữ khác (Jaccard thấp) nhưng cosine embedding >= SEMANTIC_THRESHOLD cũng tính là trùng.
 """
 import logging
 from collections import defaultdict
@@ -15,10 +17,12 @@ from sqlalchemy import delete, select, tuple_
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
+from app.core.embedder import Embedder
 from app.core.minhash import MIN_SHINGLES, band_buckets, jaccard, shingles, signature
 from app.core.watermark import extract_session_ids, strip_marks
 from app.models import Chapter, ParagraphLSH, PlagiarismReport
 from app.services.notification_service import notify
+from app.services.semantic_service import find_semantic_matches, index_embeddings
 
 logger = logging.getLogger("icet.plagiarism")
 
@@ -120,7 +124,8 @@ def _order(chapter: Chapter) -> tuple:
     return (chapter.created_at, chapter.id)
 
 
-def check_chapter(db: Session, chapter_id: int) -> list[PlagiarismReport]:
+def check_chapter(db: Session, chapter_id: int, embedder: Embedder | None = None) -> list[PlagiarismReport]:
+    """embedder = None: chỉ so nguyên văn (MinHash). Có embedder: so thêm theo nghĩa."""
     chapter = db.get(Chapter, chapter_id)
     if chapter is None:
         return []
@@ -129,15 +134,33 @@ def check_chapter(db: Session, chapter_id: int) -> list[PlagiarismReport]:
     indexed = index_chapter(db, chapter)
     candidates = _find_candidates(db, chapter, indexed)
 
-    # 1. Xác nhận bằng Jaccard chính xác: matches[đoạn của mình] = [(chương khác, đoạn của họ, độ giống)]
-    matches: dict[int, list[tuple[Chapter, int, float]]] = defaultdict(list)
+    # 1. Xác nhận bằng Jaccard chính xác:
+    #    matches[đoạn của mình] = [(chương khác, đoạn của họ, độ giống, cách phát hiện)]
+    matches: dict[int, list[tuple[Chapter, int, float, str]]] = defaultdict(list)
     for other_id, pairs in candidates.items():
         other = db.get(Chapter, other_id)
+        if other is None:
+            continue
         other_paragraphs = split_paragraphs(other.content)
         for my_idx, other_idx in pairs:
+            if other_idx >= len(other_paragraphs):
+                continue
             sim = jaccard(indexed[my_idx], shingles(other_paragraphs[other_idx]))
             if sim >= PARAGRAPH_THRESHOLD:
-                matches[my_idx].append((other, other_idx, round(sim, 3)))
+                matches[my_idx].append((other, other_idx, round(sim, 3), "minhash"))
+
+    # 1b. So theo nghĩa (nếu có model): bắt đoạn viết lại mà MinHash bỏ sót
+    if embedder is not None:
+        vectors = index_embeddings(db, chapter, embedder)
+        for my_idx, found in find_semantic_matches(db, chapter, vectors).items():
+            seen = {(m[0].id, m[1]) for m in matches[my_idx]}
+            for other_id, other_idx, sim in found:
+                if (other_id, other_idx) in seen:
+                    continue  # MinHash đã bắt cặp này (nguyên văn) -> giữ nhãn nguyên văn
+                other = db.get(Chapter, other_id)
+                if other is None:
+                    continue
+                matches[my_idx].append((other, other_idx, round(sim, 3), "semantic"))
 
     # 2. Với từng đoạn: tìm lần xuất hiện SỚM NHẤT trong các chương của chính tác giả này
     #    -> đó là "thời điểm tác giả viết đoạn này". So với chương của tác giả khác để biết ai chép ai.
@@ -145,12 +168,14 @@ def check_chapter(db: Session, chapter_id: int) -> list[PlagiarismReport]:
     report_pairs: dict[tuple[int, int], dict[int, dict]] = defaultdict(dict)
     chapters_by_id: dict[int, Chapter] = {chapter.id: chapter}
 
-    def add_pair(suspect: Chapter, s_idx: int, source: Chapter, src_idx: int, sim: float):
+    def add_pair(suspect: Chapter, s_idx: int, source: Chapter, src_idx: int, sim: float, method: str):
         chapters_by_id[suspect.id] = suspect
         chapters_by_id[source.id] = source
         bucket = report_pairs[(suspect.id, source.id)]
-        if s_idx not in bucket or sim > bucket[s_idx]["similarity"]:
-            bucket[s_idx] = {"suspect_index": s_idx, "source_index": src_idx, "similarity": sim}
+        old = bucket.get(s_idx)
+        # Ưu tiên cặp nguyên văn (bằng chứng mạnh hơn), sau đó tới độ giống cao hơn
+        if old is None or (method == "minhash", sim) > (old["method"] == "minhash", old["similarity"]):
+            bucket[s_idx] = {"suspect_index": s_idx, "source_index": src_idx, "similarity": sim, "method": method}
 
     for my_idx, found in matches.items():
         own = [m for m in found if m[0].story.author_id == author_id]
@@ -161,12 +186,12 @@ def check_chapter(db: Session, chapter_id: int) -> list[PlagiarismReport]:
         earlier = [m for m in others if _order(m[0]) < origin_key]
         if earlier:
             # Người khác viết trước -> chương này nghi đạo, nguồn là bản sớm nhất
-            src, src_idx, sim = min(earlier, key=lambda m: _order(m[0]))
-            add_pair(chapter, my_idx, src, src_idx, sim)
+            src, src_idx, sim, method = min(earlier, key=lambda m: _order(m[0]))
+            add_pair(chapter, my_idx, src, src_idx, sim, method)
         elif i_am_origin:
             # Chương này là bản gốc -> các chương của người khác đăng sau là nghi đạo
-            for other, other_idx, sim in others:
-                add_pair(other, other_idx, chapter, my_idx, sim)
+            for other, other_idx, sim, method in others:
+                add_pair(other, other_idx, chapter, my_idx, sim, method)
         # Còn lại: tác giả đã viết đoạn này ở chương cũ hơn -> chương cũ đó chịu trách nhiệm cảnh báo
 
     # 3. Ghi cảnh báo
@@ -195,11 +220,12 @@ def check_chapter(db: Session, chapter_id: int) -> list[PlagiarismReport]:
     return reports
 
 
-def run_check_in_background(chapter_id: int) -> None:
-    """Gọi từ BackgroundTasks của FastAPI: mở phiên DB riêng, lỗi thì chỉ ghi log."""
+def run_check_in_background(chapter_id: int, embedder: Embedder | None = None) -> None:
+    """Gọi từ worker (có embedder) hoặc BackgroundTasks của FastAPI khi không có worker (chỉ MinHash).
+    Mở phiên DB riêng, lỗi thì chỉ ghi log."""
     db = SessionLocal()
     try:
-        reports = check_chapter(db, chapter_id)
+        reports = check_chapter(db, chapter_id, embedder)
         if reports:
             logger.warning("Chương %s: phát hiện %d cảnh báo đạo văn", chapter_id, len(reports))
     except Exception:
@@ -209,12 +235,12 @@ def run_check_in_background(chapter_id: int) -> None:
         db.close()
 
 
-def reindex_all(db: Session) -> dict:
+def reindex_all(db: Session, embedder: Embedder | None = None) -> dict:
     """Lập chỉ mục + kiểm tra lại toàn bộ chương (dùng 1 lần cho dữ liệu cũ)."""
     ids = list(db.scalars(select(Chapter.id).order_by(Chapter.created_at, Chapter.id)))
     report_ids: set[int] = set()
     for chapter_id in ids:
-        report_ids.update(report.id for report in check_chapter(db, chapter_id))
+        report_ids.update(report.id for report in check_chapter(db, chapter_id, embedder))
     return {"chapters": len(ids), "reports": len(report_ids)}
 
 
@@ -258,6 +284,7 @@ def report_to_dict(report: PlagiarismReport, viewer) -> dict:
         "matches": [
             {
                 **m,
+                "method": m.get("method", "minhash"),  # cảnh báo cũ chưa có trường này
                 "suspect_text": strip_marks(suspect_paragraphs[m["suspect_index"]]),
                 "source_text": strip_marks(source_paragraphs[m["source_index"]]),
             }

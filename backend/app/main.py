@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.database import SessionLocal, get_db
 from app.core.redis_client import redis_client
 from app.core.shield import HONEYPOT_PATHS, shield_middleware
+from app.core.task_queue import close_pool, open_pool
 from app.models import Genre
 from app.models.genre import DEFAULT_GENRES
 from app.routers import admin, auth, chapters, community, plagiarism, reading, stories, trace
@@ -28,7 +29,9 @@ def seed_genres() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     seed_genres()
+    await open_pool(app)  # hàng đợi việc nền (worker arq)
     yield
+    await close_pool(app)
 
 
 app = FastAPI(title="ICeT API", lifespan=lifespan)

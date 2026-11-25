@@ -1,4 +1,4 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -12,7 +12,8 @@ from app.services.chapter_service import (
     list_chapters,
     update_chapter,
 )
-from app.services.plagiarism_service import locked_chapter_ids, run_check_in_background
+from app.core.task_queue import schedule_plagiarism_check
+from app.services.plagiarism_service import locked_chapter_ids
 from app.services.story_service import get_story
 
 router = APIRouter(prefix="/api/stories/{story_id}/chapters", tags=["chapters"])
@@ -52,6 +53,7 @@ def manage_chapters(
 @router.post("", response_model=ChapterOut, status_code=status.HTTP_201_CREATED)
 def create(
     data: ChapterCreate,
+    request: Request,
     background_tasks: BackgroundTasks,
     story: Story = Depends(get_owned_story),
     db: Session = Depends(get_db),
@@ -60,8 +62,8 @@ def create(
         chapter = create_chapter(db, story, data)
     except ValueError as e:
         raise HTTPException(422, str(e))
-    # Kiểm tra đạo văn chạy SAU khi đã trả kết quả -> tác giả không phải chờ
-    background_tasks.add_task(run_check_in_background, chapter.id)
+    # Kiểm tra đạo văn: đưa sang worker (hoặc chạy nền sau khi trả kết quả) -> tác giả không phải chờ
+    background_tasks.add_task(schedule_plagiarism_check, request.app, chapter.id)
     return chapter
 
 
@@ -73,6 +75,7 @@ def read_for_edit(chapter: Chapter = Depends(get_owned_chapter)):
 @router.patch("/{chapter_id}", response_model=ChapterOut)
 def update(
     data: ChapterUpdate,
+    request: Request,
     background_tasks: BackgroundTasks,
     chapter: Chapter = Depends(get_owned_chapter),
     db: Session = Depends(get_db),
@@ -82,7 +85,7 @@ def update(
     except ValueError as e:
         raise HTTPException(422, str(e))
     if data.content is not None:  # chỉ kiểm tra lại khi nội dung thay đổi
-        background_tasks.add_task(run_check_in_background, updated.id)
+        background_tasks.add_task(schedule_plagiarism_check, request.app, updated.id)
     return updated
 
 

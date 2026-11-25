@@ -1,9 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_admin
-from app.models import PlagiarismReport, User
+from app.core.task_queue import enqueue
+from app.models import Chapter, PlagiarismReport, User
 from app.schemas.plagiarism import ReindexResult, ReportOut, ReportStatus, ReportStatusUpdate
 from app.services.plagiarism_service import apply_confirmation, list_reports, reindex_all, report_to_dict
 
@@ -39,6 +42,10 @@ def update_report_status(
 
 
 @router.post("/reindex", response_model=ReindexResult)
-def reindex(admin: User = Depends(require_admin), db: Session = Depends(get_db)):
-    """Lập chỉ mục lại toàn bộ chương (chạy 1 lần cho các chương đã có trước khi cài tính năng)."""
-    return reindex_all(db)
+async def reindex(request: Request, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
+    """Lập chỉ mục lại toàn bộ chương (chạy 1 lần cho dữ liệu cũ, hoặc sau khi đổi model/ngưỡng).
+    Có worker -> giao cho worker (có so theo nghĩa); không có -> chạy ngay, chỉ MinHash."""
+    if await enqueue(request.app, "reindex_job"):
+        total = db.scalar(select(func.count(Chapter.id))) or 0
+        return {"chapters": total, "reports": -1, "queued": True}
+    return await run_in_threadpool(reindex_all, db)

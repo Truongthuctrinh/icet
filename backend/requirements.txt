@@ -10,3 +10,7 @@ redis
 python-multipart
 email-validator
 numpy
+
+arq
+fastembed
+pgvector

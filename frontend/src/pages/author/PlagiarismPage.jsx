@@ -18,6 +18,21 @@ const FILTERS = [
   { value: "dismissed", label: "Đã bỏ qua" },
 ];
 
+// Nguyên văn: MinHash bắt được chuỗi chữ giống nhau. Viết lại: embedding thấy cùng ý dù khác chữ.
+function MatchKind({ method }) {
+  const semantic = method === "semantic";
+  return (
+    <span
+      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+        semantic ? "bg-dusk/10 text-dusk" : "bg-rose/10 text-rose"
+      }`}
+      title={semantic ? "Câu chữ khác nhưng cùng nội dung, có thể đã bị viết lại" : "Câu chữ gần như giống hệt"}
+    >
+      {semantic ? "Trùng ý (viết lại)" : "Trùng nguyên văn"}
+    </span>
+  );
+}
+
 function headline(report) {
   const s = report.suspect;
   const src = report.source;
@@ -122,9 +137,12 @@ function ReportCard({ report, isAdmin, onStatus, busy }) {
         <ol className="space-y-4 border-t border-mist px-5 py-5">
           {report.matches.map((m) => (
             <li key={`${m.suspect_index}-${m.source_index}`}>
-              <p className="mb-2 text-[0.8125rem] text-ink-soft">
-                Giống {Math.round(m.similarity * 100)}%: đoạn {m.source_index + 1} bản gốc, đoạn{" "}
-                {m.suspect_index + 1} bản nghi sao chép
+              <p className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.8125rem] text-ink-soft">
+                <MatchKind method={m.method} />
+                <span>
+                  {m.method === "semantic" ? "Giống nghĩa" : "Trùng chữ"} {Math.round(m.similarity * 100)}%: đoạn{" "}
+                  {m.source_index + 1} bản gốc, đoạn {m.suspect_index + 1} bản nghi sao chép
+                </span>
               </p>
               <div className="grid gap-3 sm:grid-cols-2">
                 <p className="rounded-lg bg-paper px-4 py-3 font-serif text-[0.975rem] leading-[1.75] text-ink">
@@ -184,7 +202,11 @@ export default function PlagiarismPage() {
     setReindexInfo("Đang quét lại toàn bộ chương…");
     try {
       const res = await plagiarismApi.reindex();
-      setReindexInfo(`Đã quét ${res.chapters} chương, ${res.reports} cảnh báo được tạo hoặc cập nhật.`);
+      setReindexInfo(
+        res.queued
+          ? `Đã giao ${res.chapters} chương cho worker quét lại (so cả nguyên văn lẫn ý). Tải lại trang sau ít phút để xem kết quả.`
+          : `Đã quét ${res.chapters} chương (chỉ so nguyên văn vì worker chưa chạy), ${res.reports} cảnh báo được tạo hoặc cập nhật.`
+      );
       load();
     } catch (err) {
       setReindexInfo("");

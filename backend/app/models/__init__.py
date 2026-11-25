@@ -5,3 +5,4 @@ from app.models.chapter import Chapter  # noqa: F401
 from app.models.reading_session import ReadingSession  # noqa: F401
 from app.models.plagiarism import ParagraphLSH, PlagiarismReport  # noqa: F401
 from app.models.community import Comment, Follow, Notification, Rating  # noqa: F401
+from app.models.embedding import ParagraphEmbedding  # noqa: F401

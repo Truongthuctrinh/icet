@@ -21,6 +21,7 @@ class MatchedParagraph(BaseModel):
     suspect_index: int
     source_index: int
     similarity: float
+    method: Literal["minhash", "semantic"] = "minhash"  # trùng nguyên văn / trùng ý (viết lại)
     suspect_text: str
     source_text: str
 
@@ -45,4 +46,5 @@ class ReportStatusUpdate(BaseModel):
 
 class ReindexResult(BaseModel):
     chapters: int
-    reports: int
+    reports: int  # -1 khi đã giao cho worker (chưa có kết quả)
+    queued: bool = False
