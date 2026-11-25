@@ -18,6 +18,7 @@ class UserOut(BaseModel):
     email: str
     display_name: str
     role: str
+    avatar_url: str | None = None
     created_at: datetime
 
 

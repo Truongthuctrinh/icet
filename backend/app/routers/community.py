@@ -206,6 +206,7 @@ def profile(username: str, db: Session = Depends(get_db)):
     return ProfileOut(
         username=user.username,
         display_name=user.display_name,
+        avatar_url=user.avatar_url,
         created_at=user.created_at,
         story_count=len(stories),
         total_followers=sum(s.follower_count for s in stories),

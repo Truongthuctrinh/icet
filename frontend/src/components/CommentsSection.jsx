@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router";
 import { commentApi } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { apiError, timeAgo } from "../utils/format";
+import Avatar from "./Avatar";
 import { Button, ErrorNote } from "./ui";
 
 const TEXTAREA =
@@ -62,7 +63,8 @@ function CommentItem({ comment, canModerate, onReply, onEdit, onDelete, isReply 
   return (
     <li className={isReply ? "border-l-2 border-mist pl-4" : ""}>
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <Link to={`/nguoi-dung/${comment.user.username}`} className="font-medium text-ink hover:text-dusk">
+        <Link to={`/nguoi-dung/${comment.user.username}`} className="flex items-center gap-2 font-medium text-ink hover:text-dusk">
+          <Avatar user={comment.user} size="xs" />
           {comment.user.display_name}
         </Link>
         {comment.is_story_author && (

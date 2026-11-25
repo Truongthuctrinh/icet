@@ -19,6 +19,7 @@ export default defineConfig({
     // xfwd: gửi kèm X-Forwarded-For để backend biết IP thật của người dùng.
     proxy: {
       "/api": { target: "http://localhost:8000", changeOrigin: true, xfwd: true },
+      "/media": { target: "http://localhost:8000", changeOrigin: true }, // ảnh bìa, ảnh đại diện
     },
   },
   preview: { headers: securityHeaders },

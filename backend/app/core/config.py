@@ -3,6 +3,7 @@ from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT_DIR = Path(__file__).resolve().parents[3]  # thư mục icet/
+BACKEND_DIR = Path(__file__).resolve().parents[2]  # thư mục icet/backend/
 
 
 class Settings(BaseSettings):
@@ -37,8 +38,17 @@ class Settings(BaseSettings):
     EMBEDDING_ENABLED: bool = True
     EMBEDDING_MODEL: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     EMBEDDING_CACHE_DIR: str = ""  # để trống = thư mục cache mặc định của fastembed
-    SEMANTIC_THRESHOLD: float = 0.85  # cosine >= ngưỡng -> 2 đoạn coi là cùng ý (hiệu chỉnh bằng script)
+    SEMANTIC_THRESHOLD: float = 0.65  # cosine >= ngưỡng -> cùng ý. Đo bằng calibrate_embedding: viết lại >=0,75, cùng chủ đề <=0,53
     SEMANTIC_MIN_WORDS: int = 12  # đoạn ngắn hơn không đưa vào so sánh ngữ nghĩa
+
+    # Ảnh tải lên (bìa truyện, ảnh đại diện)
+    MEDIA_DIR: str = ""  # để trống = icet/backend/media
+    MAX_UPLOAD_MB: int = 2
+    RATE_UPLOAD_PER_MIN: int = 10
+
+    @property
+    def media_path(self) -> Path:
+        return Path(self.MEDIA_DIR) if self.MEDIA_DIR else BACKEND_DIR / "media"
 
     @property
     def DATABASE_URL(self) -> str:

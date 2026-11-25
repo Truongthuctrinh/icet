@@ -1,7 +1,14 @@
+# Hai cách chạy:
+#   Đang code (như trước giờ):  docker compose up -d
+#       -> chỉ bật db + redis; API, worker, giao diện chạy trong terminal để sửa code thấy ngay
+#   Chạy trọn bộ (demo, nộp bài): docker compose --profile full up -d --build
+#       -> bật thêm api + worker + web, mở http://localhost:8080
+
 services:
   db:
     image: pgvector/pgvector:pg17
     container_name: icet-db
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -19,11 +26,77 @@ services:
   redis:
     image: redis:7-alpine
     container_name: icet-redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    profiles: ["full"]
+    build: ./backend
+    container_name: icet-api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+      REDIS_URL: redis://redis:6379/0
+      MEDIA_DIR: /app/media
+      # Chỉ nginx (container web, trong mạng nội bộ Docker) được tin header X-Forwarded-For
+      TRUSTED_PROXIES: 127.0.0.1,::1,172.16.0.0/12,192.168.0.0/16
     volumes:
-      - redisdata:/data
+      - media:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+    # Không mở cổng ra ngoài: mọi request phải đi qua nginx (web)
+
+  worker:
+    profiles: ["full"]
+    build: ./backend
+    container_name: icet-worker
+    restart: unless-stopped
+    command: ["arq", "app.worker.WorkerSettings"]
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+      REDIS_URL: redis://redis:6379/0
+      EMBEDDING_CACHE_DIR: /models  # model tải 1 lần, lưu trong volume
+    volumes:
+      - models:/models
+    depends_on:
+      api:
+        condition: service_healthy  # đợi API tạo bảng xong (alembic) mới chạy
+    deploy:
+      resources:
+        limits:
+          memory: 1500M  # máy yếu: không cho worker chiếm hết RAM
+
+  web:
+    profiles: ["full"]
+    build: ./frontend
+    container_name: icet-web
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - media:/srv/media:ro  # nginx chỉ đọc ảnh
+    depends_on:
+      api:
+        condition: service_healthy
 
 volumes:
   pgdata:
-  redisdata:
+  media:
+  models:

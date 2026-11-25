@@ -7,6 +7,9 @@ os.environ.setdefault("POSTGRES_DB", "test")
 os.environ.setdefault("JWT_SECRET", "test-secret-key-for-pytest-only-0123456789")
 os.environ.setdefault("TRUSTED_PROXIES", "127.0.0.1,testclient")  # TestClient đóng vai proxy
 os.environ.setdefault("TASK_QUEUE_ENABLED", "false")  # test: không cần worker, kiểm tra chạy ngay
+import tempfile  # noqa: E402
+
+os.environ.setdefault("MEDIA_DIR", tempfile.mkdtemp(prefix="icet-media-"))  # ảnh test không lẫn vào media thật
 
 import fakeredis
 import pytest

@@ -5,3 +5,5 @@ __pycache__/
 node_modules/
 dist/
 .vscode/
+backend/media/
+.pytest_cache/

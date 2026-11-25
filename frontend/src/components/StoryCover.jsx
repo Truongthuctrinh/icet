@@ -1,4 +1,4 @@
-/** Bìa chữ tự sinh: màu chọn ổn định theo tên truyện, không cần tải ảnh lên. */
+/** Bìa chữ tự sinh khi truyện chưa có ảnh: màu chọn ổn định theo tên truyện. */
 const PALETTES = [
   { bg: "#2f2a5a", fg: "#f4efe1", accent: "#f2b84b" },
   { bg: "#1f4a45", fg: "#eef3ea", accent: "#e9c46a" },
@@ -20,8 +20,27 @@ const SIZES = {
   lg: "w-36 h-52 text-[1.05rem] p-3.5 sm:w-44 sm:h-64 sm:text-[1.2rem]",
 };
 
-export default function StoryCover({ story, size = "md", className = "" }) {
-  const p = PALETTES[hash(story.title) % PALETTES.length];
+const IMAGE_SIZES = {
+  sm: "w-14 h-20",
+  md: "w-24 h-36",
+  lg: "w-36 h-52 sm:w-44 sm:h-64",
+};
+
+/** previewUrl: ảnh đang chọn ở form (chưa tải lên). Không có ảnh -> bìa chữ tự sinh. */
+export default function StoryCover({ story, size = "md", className = "", previewUrl }) {
+  const image = previewUrl ?? story.cover_url;
+  if (image) {
+    return (
+      <img
+        src={image}
+        alt=""
+        aria-hidden="true"
+        loading="lazy"
+        className={`shrink-0 rounded-md object-cover shadow-sm ${IMAGE_SIZES[size]} ${className}`}
+      />
+    );
+  }
+  const p = PALETTES[hash(story.title || "") % PALETTES.length];
   return (
     <div
       aria-hidden="true"
@@ -32,7 +51,7 @@ export default function StoryCover({ story, size = "md", className = "" }) {
         ✦
       </span>
       <span className="font-serif leading-[1.15] [overflow-wrap:anywhere]">
-        {size === "sm" ? story.title.slice(0, 40) : story.title}
+        {size === "sm" ? (story.title || "").slice(0, 40) : story.title || "Tên truyện"}
       </span>
       {size !== "sm" && (
         <span className="truncate text-[0.7em] opacity-70">{story.author?.display_name}</span>

@@ -1,5 +1,6 @@
 import { Link, NavLink, Outlet, useNavigate } from "react-router";
 import { useAuth } from "../context/AuthContext";
+import Avatar from "./Avatar";
 import NotificationBell from "./NotificationBell";
 import { Button } from "./ui";
 
@@ -43,6 +44,7 @@ export default function Layout() {
                 )}
                 <NotificationBell />
                 <Link to={`/nguoi-dung/${user.username}`} className="flex items-center gap-2 text-sm text-ink hover:text-dusk">
+                  <Avatar user={user} size="xs" />
                   {user.display_name}
                   {user.role === "admin" && (
                     <span className="rounded-full bg-dusk/10 px-2 py-0.5 text-xs font-medium text-dusk">Quản trị</span>

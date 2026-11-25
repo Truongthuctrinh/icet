@@ -39,6 +39,13 @@ api.interceptors.response.use(
 
 const data = (request) => request.then((res) => res.data);
 
+// Gửi file dạng multipart/form-data (trình duyệt tự đặt Content-Type kèm boundary)
+const fileForm = (file) => {
+  const form = new FormData();
+  form.append("file", file);
+  return form;
+};
+
 export const authApi = {
   login: (identifier, password) =>
     data(api.post("/auth/login", new URLSearchParams({ username: identifier, password }))),
@@ -55,6 +62,8 @@ export const storyApi = {
   create: (payload) => data(api.post("/stories", payload)),
   update: (storyId, payload) => data(api.patch(`/stories/${storyId}`, payload)),
   remove: (storyId) => api.delete(`/stories/${storyId}`),
+  uploadCover: (storyId, file) => data(api.put(`/stories/${storyId}/cover`, fileForm(file))),
+  removeCover: (storyId) => data(api.delete(`/stories/${storyId}/cover`)),
 };
 
 export const chapterApi = {
@@ -131,6 +140,8 @@ export const notificationApi = {
 
 export const userApi = {
   profile: (username) => data(api.get(`/users/${encodeURIComponent(username)}`)),
+  uploadAvatar: (file) => data(api.put("/users/me/avatar", fileForm(file))),
+  removeAvatar: () => data(api.delete("/users/me/avatar")),
 };
 
 export const adminApi = {

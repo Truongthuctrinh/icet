@@ -23,6 +23,7 @@ class Story(Base):
     rating_avg: Mapped[float] = mapped_column(Float, default=0, server_default="0")
     rating_count: Mapped[int] = mapped_column(default=0, server_default="0")
     follower_count: Mapped[int] = mapped_column(default=0, server_default="0")
+    cover_url: Mapped[str | None] = mapped_column(String(255), default=None)  # /media/covers/<mã>.webp
 
     author: Mapped["User"] = relationship(back_populates="stories")
     genres: Mapped[list[Genre]] = relationship(secondary=story_genres, order_by=Genre.name)

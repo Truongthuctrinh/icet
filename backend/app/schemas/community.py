@@ -81,6 +81,7 @@ class UnreadCount(BaseModel):
 class ProfileOut(BaseModel):
     username: str
     display_name: str
+    avatar_url: str | None = None
     created_at: datetime
     story_count: int
     total_followers: int

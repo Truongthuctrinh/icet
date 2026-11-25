@@ -1,15 +1,76 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useLocation, useNavigate, useParams } from "react-router";
 import { genreApi, storyApi } from "../../api/client";
+import StoryCover from "../../components/StoryCover";
 import { BackLink, Button, ErrorNote, Field, PageSpinner } from "../../components/ui";
+import { useAuth } from "../../context/AuthContext";
 import { apiError, STATUS_LABELS } from "../../utils/format";
+import { checkImageFile, IMAGE_ACCEPT, MAX_IMAGE_MB } from "../../utils/image";
+
+/** Chọn ảnh bìa: xem trước ngay, chỉ tải lên khi bấm lưu. */
+function CoverPicker({ title, authorName, currentUrl, file, removed, onPick, onRemove }) {
+  const [preview, setPreview] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!file) {
+      setPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url); // giải phóng bộ nhớ khi đổi ảnh khác
+  }, [file]);
+
+  const handleChange = (e) => {
+    const picked = e.target.files?.[0];
+    e.target.value = ""; // cho phép chọn lại cùng 1 file
+    if (!picked) return;
+    const problem = checkImageFile(picked);
+    setError(problem);
+    if (!problem) onPick(picked);
+  };
+
+  const shown = preview ?? (removed ? null : currentUrl);
+  return (
+    <fieldset>
+      <legend className="mb-1.5 block text-sm font-medium text-ink">Ảnh bìa</legend>
+      <div className="flex items-end gap-5">
+        <StoryCover
+          story={{ title, author: { display_name: authorName }, cover_url: null }}
+          previewUrl={shown}
+          size="lg"
+        />
+        <div className="space-y-2">
+          <label className="inline-flex cursor-pointer items-center rounded-lg border border-mist bg-white px-4 py-2 text-sm font-medium text-ink hover:border-dusk focus-within:outline focus-within:outline-2 focus-within:outline-dusk">
+            {shown ? "Đổi ảnh khác" : "Chọn ảnh"}
+            <input type="file" accept={IMAGE_ACCEPT} onChange={handleChange} className="sr-only" />
+          </label>
+          {shown && (
+            <button type="button" onClick={onRemove} className="block text-sm text-rose hover:underline">
+              Gỡ ảnh, dùng bìa chữ
+            </button>
+          )}
+          <p className="max-w-56 text-[0.8125rem] text-ink-soft">
+            JPG, PNG hoặc WebP, tối đa {MAX_IMAGE_MB} MB. Ảnh được cắt theo tỉ lệ bìa sách 2:3.
+          </p>
+          {error && <p className="text-[0.8125rem] text-rose">{error}</p>}
+        </div>
+      </div>
+    </fieldset>
+  );
+}
 
 /** Dùng chung cho tạo truyện mới (/tac-gia/truyen-moi) và sửa (/tac-gia/truyen/:id/sua). */
 export default function StoryFormPage() {
   const { storyId } = useParams();
   const isEdit = Boolean(storyId);
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
 
+  const [cover, setCover] = useState({ current: null, file: null, removed: false });
+  const [authorName, setAuthorName] = useState("");
   const [form, setForm] = useState({ title: "", description: "", status: "ongoing", genre_ids: [] });
   const [genres, setGenres] = useState([]);
 
@@ -28,7 +89,7 @@ export default function StoryFormPage() {
     }));
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(location.state?.coverError || "");
 
   useEffect(() => {
     if (!isEdit) return;
@@ -43,6 +104,8 @@ export default function StoryFormPage() {
           status: story.status,
           genre_ids: story.genres.map((g) => g.id),
         });
+        setCover({ current: story.cover_url, file: null, removed: false });
+        setAuthorName(story.author.display_name);
       })
       .catch((err) =>
         setError(err.message === "not-owner" ? "Không tìm thấy truyện này trong truyện của bạn." : apiError(err))
@@ -59,6 +122,20 @@ export default function StoryFormPage() {
     try {
       const payload = { ...form, title: form.title.trim() };
       const story = isEdit ? await storyApi.update(storyId, payload) : await storyApi.create(payload);
+      try {
+        if (cover.file) await storyApi.uploadCover(story.id, cover.file);
+        else if (cover.removed && cover.current) await storyApi.removeCover(story.id);
+      } catch (err) {
+        // Truyện đã lưu, chỉ ảnh lỗi -> mở trang sửa (không tạo trùng truyện nếu bấm lưu lại)
+        const coverError = `Đã lưu truyện nhưng chưa lưu được ảnh bìa: ${apiError(err)}`;
+        if (isEdit) {
+          setError(coverError);
+          setSaving(false);
+        } else {
+          navigate(`/tac-gia/truyen/${story.id}/sua`, { replace: true, state: { coverError } });
+        }
+        return;
+      }
       navigate(`/tac-gia/truyen/${story.id}`);
     } catch (err) {
       setError(apiError(err));
@@ -98,6 +175,15 @@ export default function StoryFormPage() {
           onChange={update("title")}
           maxLength={200}
           required
+        />
+        <CoverPicker
+          title={form.title}
+          authorName={authorName || user?.display_name}
+          currentUrl={cover.current}
+          file={cover.file}
+          removed={cover.removed}
+          onPick={(file) => setCover((c) => ({ ...c, file, removed: false }))}
+          onRemove={() => setCover((c) => ({ ...c, file: null, removed: true }))}
         />
         <Field
           id="description"

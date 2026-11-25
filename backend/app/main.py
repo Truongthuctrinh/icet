@@ -2,17 +2,19 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
 from fastapi.responses import PlainTextResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import SessionLocal, get_db
 from app.core.redis_client import redis_client
 from app.core.shield import HONEYPOT_PATHS, shield_middleware
 from app.core.task_queue import close_pool, open_pool
 from app.models import Genre
 from app.models.genre import DEFAULT_GENRES
-from app.routers import admin, auth, chapters, community, plagiarism, reading, stories, trace
+from app.routers import admin, auth, chapters, community, plagiarism, reading, stories, trace, uploads
 
 
 def seed_genres() -> None:
@@ -53,6 +55,11 @@ app.include_router(community.router)
 app.include_router(trace.router)
 app.include_router(plagiarism.router)
 app.include_router(admin.router)
+app.include_router(uploads.router)
+
+# Ảnh bìa / ảnh đại diện. Chạy Docker thì nginx phục vụ thẳng thư mục này, không qua Python
+settings.media_path.mkdir(parents=True, exist_ok=True)
+app.mount("/media", StaticFiles(directory=settings.media_path), name="media")
 
 AI_CRAWLERS = ["GPTBot", "ChatGPT-User", "OAI-SearchBot", "CCBot", "ClaudeBot", "Claude-Web", "anthropic-ai",
                "Google-Extended", "PerplexityBot", "Bytespider", "Amazonbot", "Applebot-Extended",

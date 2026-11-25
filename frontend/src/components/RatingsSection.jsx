@@ -4,6 +4,7 @@ import { ratingApi } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { apiError, timeAgo } from "../utils/format";
 import { StarDisplay, StarInput } from "./Stars";
+import Avatar from "./Avatar";
 import { Button, ErrorNote } from "./ui";
 
 export default function RatingsSection({ story, myRating, onChanged }) {
@@ -125,7 +126,8 @@ export default function RatingsSection({ story, myRating, onChanged }) {
           {summary.items.map((r) => (
             <li key={r.id} className="py-4">
               <div className="flex flex-wrap items-center gap-3 text-sm">
-                <Link to={`/nguoi-dung/${r.user.username}`} className="font-medium text-ink hover:text-dusk">
+                <Link to={`/nguoi-dung/${r.user.username}`} className="flex items-center gap-2 font-medium text-ink hover:text-dusk">
+                  <Avatar user={r.user} size="xs" />
                   {r.user.display_name}
                 </Link>
                 <StarDisplay value={r.score} size="text-sm" />

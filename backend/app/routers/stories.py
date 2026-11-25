@@ -13,6 +13,7 @@ from app.schemas.story import (
     StoryStatus,
     StoryUpdate,
 )
+from app.services.media_service import delete_image
 from app.services.story_service import (
     create_story,
     delete_story,
@@ -106,4 +107,6 @@ def update(data: StoryUpdate, story: Story = Depends(get_owned_story), db: Sessi
 
 @router.delete("/{story_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete(story: Story = Depends(get_owned_story), db: Session = Depends(get_db)):
+    cover_url = story.cover_url
     delete_story(db, story)
+    delete_image(cover_url)

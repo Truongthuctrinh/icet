@@ -36,6 +36,7 @@ class AuthorBrief(BaseModel):
     id: int
     username: str
     display_name: str
+    avatar_url: str | None = None
 
 
 class StoryOut(BaseModel):
@@ -53,6 +54,7 @@ class StoryOut(BaseModel):
     rating_avg: float
     rating_count: int
     follower_count: int
+    cover_url: str | None = None
 
 
 class MyRating(BaseModel):

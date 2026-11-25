@@ -16,5 +16,6 @@ class User(Base):
     display_name: Mapped[str] = mapped_column(String(100))
     role: Mapped[str] = mapped_column(String(20), default="user")
     is_active: Mapped[bool] = mapped_column(default=True)
+    avatar_url: Mapped[str | None] = mapped_column(String(255), default=None)  # /media/avatars/<mã>.webp
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     stories: Mapped[list["Story"]] = relationship(back_populates="author")

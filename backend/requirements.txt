@@ -1,16 +1,22 @@
-fastapi
-uvicorn[standard]
+# Web API
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+# Database
 sqlalchemy>=2.0
-psycopg[binary]
-alembic
-pydantic-settings
-pyjwt
-pwdlib[argon2]
-redis
-python-multipart
-email-validator
-numpy
-
-arq
-fastembed
-pgvector
+psycopg[binary]>=3.2
+alembic>=1.13
+pgvector>=0.3
+# Cấu hình, bảo mật
+pydantic-settings>=2.4
+email-validator>=2.2
+pyjwt>=2.9
+pwdlib[argon2]>=0.2
+# Redis, hàng đợi việc nền
+redis>=5.0
+arq>=0.26
+# Đạo văn: MinHash (numpy) + embedding (fastembed, chạy ONNX bằng CPU)
+numpy>=1.26
+fastembed>=0.4
+# Ảnh tải lên
+pillow>=10.4

@@ -20,6 +20,7 @@ MESSAGES = {
     "paragraphs": "Bạn tải nội dung quá nhanh. Đợi {s} giây rồi thử lại.",
     "login": "Đăng nhập sai quá nhiều lần. Đợi {s} giây rồi thử lại.",
     "comment": "Bạn bình luận quá nhanh. Đợi {s} giây rồi thử lại.",
+    "upload": "Bạn tải ảnh lên quá nhanh. Đợi {s} giây rồi thử lại.",
 }
 
 
