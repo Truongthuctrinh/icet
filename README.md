@@ -4,8 +4,6 @@ Web đăng và đọc truyện chữ cho người viết nghiệp dư, tập tru
 chống sao chép, chống thu thập tự động (kể cả bot AI), truy vết người làm rò rỉ và phát hiện đạo văn
 (cả chép nguyên văn lẫn viết lại).
 
-Đồ án môn Học kỳ doanh nghiệp (010412610306). Sinh viên: Trương Thục Trinh (2251120451, CN22H).
-GVHD: Thầy Nguyễn Văn Chiến.
 
 ## Công nghệ
 
